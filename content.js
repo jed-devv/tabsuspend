@@ -33,6 +33,10 @@ EVENTS.forEach(evt => document.addEventListener(evt, onActivity, { passive: true
 
 // Responds to background checks for unsaved form data.
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.action === 'hasActiveMediaStream') {
+    sendResponse(document.documentElement.dataset.tabnapCall === '1');
+    return;
+  }
   if (msg.action !== 'hasUnsavedInputs') return;
 
   const inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="search"], input[type="tel"], input[type="url"], input[type="password"], input:not([type]), textarea');

@@ -155,12 +155,13 @@ chrome.alarms.onAlarm.addListener(alarm => {
 async function autoSuspendCheck() {
   const s = await chrome.storage.local.get([
     'autoSuspendMinutes', 'excludePinned', 'excludeAudible',
-    'excludeUnsavedForms', 'excludedUrls', 'excludedDomains',
+    'excludeUnsavedForms', 'excludeActiveMedia', 'excludedUrls', 'excludedDomains',
   ]);
   const minutes             = s.autoSuspendMinutes ?? 20;
   const excludePinned       = s.excludePinned       !== false;
   const excludeAudible      = s.excludeAudible      !== false;
   const excludeUnsavedForms = !!s.excludeUnsavedForms;
+  const excludeActiveMedia  = s.excludeActiveMedia  !== false;
   const excludedUrls        = s.excludedUrls        || [];
   const excludedDomains     = s.excludedDomains     || [];
 
@@ -191,6 +192,7 @@ async function autoSuspendCheck() {
     if (now - last < threshold) continue;
 
     if (excludeUnsavedForms && await tabHasUnsavedInputs(tab.id)) continue;
+    if (excludeActiveMedia  && await tabHasActiveMedia(tab.id))   continue;
 
     await suspendTab(tab.id);
   }
@@ -199,6 +201,14 @@ async function autoSuspendCheck() {
 function tabHasUnsavedInputs(tabId) {
   return new Promise(resolve => {
     chrome.tabs.sendMessage(tabId, { action: 'hasUnsavedInputs' }, response => {
+      resolve(chrome.runtime.lastError ? false : !!response);
+    });
+  });
+}
+
+function tabHasActiveMedia(tabId) {
+  return new Promise(resolve => {
+    chrome.tabs.sendMessage(tabId, { action: 'hasActiveMediaStream' }, response => {
       resolve(chrome.runtime.lastError ? false : !!response);
     });
   });

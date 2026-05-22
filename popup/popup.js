@@ -174,7 +174,7 @@ document.getElementById('shortcut-configure').addEventListener('click', () => {
 
 function loadSettings() {
   chrome.storage.local.get(
-    ['autoSuspendMinutes', 'excludePinned', 'excludeAudible', 'excludeUnsavedForms', 'excludedUrls', 'excludedDomains'],
+    ['autoSuspendMinutes', 'excludePinned', 'excludeAudible', 'excludeUnsavedForms', 'excludeActiveMedia', 'excludedUrls', 'excludedDomains'],
     data => {
       const minutes = data.autoSuspendMinutes ?? 20;
       document.querySelectorAll('.timer-opt').forEach(btn => {
@@ -184,6 +184,7 @@ function loadSettings() {
       setToggle('toggle-pinned',  data.excludePinned       !== false);
       setToggle('toggle-audible', data.excludeAudible      !== false);
       setToggle('toggle-forms',   !!data.excludeUnsavedForms);
+      setToggle('toggle-media',   data.excludeActiveMedia  !== false);
 
       renderExceptionsList(data.excludedUrls || [], data.excludedDomains || []);
     }
@@ -286,6 +287,7 @@ const TOGGLE_KEYS = {
   'toggle-pinned':  'excludePinned',
   'toggle-audible': 'excludeAudible',
   'toggle-forms':   'excludeUnsavedForms',
+  'toggle-media':   'excludeActiveMedia',
 };
 
 Object.keys(TOGGLE_KEYS).forEach(id => {

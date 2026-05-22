@@ -32,6 +32,12 @@
     {
       "matches": ["http://*/*", "https://*/*"],
       "js": ["content.js"]
+    },
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["mediadetect.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
     }
   ],
   "web_accessible_resources": [
