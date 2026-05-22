@@ -428,8 +428,16 @@ async function doRestoreClosedSuspendedTabs() {
     groupBuckets.get(data.groupId).tabIds.push(newTabId);
   }
 
-  for (const { tabIds, info, windowId } of groupBuckets.values()) {
+  for (const [oldGroupId, { tabIds, info, windowId }] of groupBuckets) {
     try {
+      // If the original group survived the reload (a non-suspended tab kept it
+      // alive), add the recreated tabs back into it instead of spawning a
+      // duplicate group with the same title/color. Its properties are intact.
+      const existing = await chrome.tabGroups.get(oldGroupId).catch(() => null);
+      if (existing) {
+        await chrome.tabs.group({ tabIds, groupId: oldGroupId });
+        continue;
+      }
       const newGroupId = await chrome.tabs.group({ tabIds, createProperties: { windowId } });
       if (info) {
         await chrome.tabGroups.update(newGroupId, {
