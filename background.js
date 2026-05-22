@@ -199,6 +199,18 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   await chrome.storage.local.set({ suspendedData });
 });
 
+// ── Keep suspended pages out of browser history ──────────────
+// Navigating a tab to suspended.html logs a visit, so the browser history
+// fills up with moon-icon entries. Delete each suspended-page visit as it is
+// recorded. Matches only our own page, so real visits (and the original URL
+// restored on wake-up) are untouched.
+chrome.history.onVisited.addListener(item => {
+  const suspendedBase = chrome.runtime.getURL('suspended.html');
+  if (item.url?.startsWith(suspendedBase)) {
+    chrome.history.deleteUrl({ url: item.url });
+  }
+});
+
 // ── Toolbar badge: number of sleeping tabs ───────────────────
 chrome.action.setBadgeBackgroundColor({ color: '#7b6aff' });
 
@@ -324,7 +336,19 @@ async function addDomainException(url) {
   }
 }
 
-async function restoreClosedSuspendedTabs() {
+// Coalesce overlapping restores into one run. Several triggers can fire close
+// together (onStartup, onInstalled, the one-shot alarm, the top-level start
+// hook), and two restores running in parallel would each see the other's
+// not-yet-created tabs as missing and recreate them — producing duplicates.
+let restoreInFlight = null;
+function restoreClosedSuspendedTabs() {
+  if (restoreInFlight) return restoreInFlight;
+  restoreInFlight = doRestoreClosedSuspendedTabs()
+    .finally(() => { restoreInFlight = null; });
+  return restoreInFlight;
+}
+
+async function doRestoreClosedSuspendedTabs() {
   const { suspendedData = {}, liveTids = {} } =
     await chrome.storage.local.get(['suspendedData', 'liveTids']);
   if (!Object.keys(liveTids).length) return;
@@ -417,6 +441,21 @@ async function restoreClosedSuspendedTabs() {
     } catch {}
   }
 }
+
+// Recreate suspended tabs the browser closed on extension reload. Reloading an
+// unpacked extension does NOT reliably fire onInstalled, so onStartup/onInstalled
+// alone can miss it — leaving the closed suspended.html tabs gone for good. So
+// also attempt a restore on every plain service-worker start. It is safe to run
+// unconditionally: restoreClosedSuspendedTabs returns early when liveTids is
+// empty (the clean browser-close case, which Chrome session-restores itself) and
+// only recreates live tids that aren't already open, so during normal operation
+// it is a no-op. The short settle delay lets Brave finish self-restoring the
+// extension's tabs first, so we don't race it into duplicates; the concurrency
+// guard coalesces this with any onStartup/onInstalled/alarm restore.
+(async () => {
+  await new Promise(r => setTimeout(r, 2000));
+  await restoreClosedSuspendedTabs();
+})();
 
 // Re-create alarm if the service worker restarts and alarm is gone
 chrome.alarms.get('tabnap-check', alarm => {

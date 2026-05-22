@@ -337,6 +337,57 @@ body {
   cursor: not-allowed;
 }
 
+/* ── Recoverable (closed but saved) ────────────────── */
+.recoverable-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--moon);
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  margin-top: 5px;
+  transition: opacity 0.15s;
+}
+
+.recoverable-hint:hover {
+  opacity: 0.8;
+}
+
+#recoverable-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.recover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.recover-title {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.recover-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.recover-actions {
+  display: flex;
+  gap: 5px;
+  justify-content: flex-end;
+  margin: 8px 0;
+}
+
+#recoverable-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
 /* ── Slider (two views side by side) ──────────────── */
 .slider {
   display: flex;

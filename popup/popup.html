@@ -61,6 +61,7 @@
         </button>
 
         <p class="sleeping-count" id="sleeping-count" data-i18n="noTabsSleeping">No tabs sleeping</p>
+        <p class="recoverable-hint" id="recoverable-hint" hidden></p>
 
         <div class="impact-row">
           <div class="impact-item">
@@ -206,6 +207,21 @@
 
         <p class="exceptions-empty" id="sleeping-empty" data-i18n="noTabsSleeping">No tabs sleeping</p>
         <div id="sleeping-list"></div>
+
+        <!-- Closed suspended tabs whose page data is still saved -->
+        <div id="recoverable-section" hidden>
+          <div class="recover-header">
+            <div class="toggle-info">
+              <span class="recover-title" data-i18n="recoverable">Recoverable</span>
+              <span class="recover-desc" data-i18n="recoverableDesc">Closed tabs whose pages were saved</span>
+            </div>
+          </div>
+          <div class="recover-actions">
+            <button class="exc-action-btn" id="recover-all" data-i18n="reopenAll">Reopen all</button>
+            <button class="exc-action-btn exc-danger" id="recover-forget" data-i18n="forgetAll">Forget all</button>
+          </div>
+          <div id="recoverable-list"></div>
+        </div>
 
       </div>
     </div>

@@ -105,6 +105,14 @@ function refreshStats() {
     // per-tab memory isn't available to extensions).
     document.getElementById('impact-ram').textContent = formatRam(n * EST_MB_PER_TAB);
   });
+
+  getRecoverableEntries().then(entries => {
+    const hint = document.getElementById('recoverable-hint');
+    hint.hidden = entries.length === 0;
+    if (entries.length) {
+      hint.textContent = plural(entries.length, 'recoverableHintOne', 'recoverableHintOther');
+    }
+  });
 }
 refreshStats();
 
@@ -192,9 +200,30 @@ document.getElementById('sleeping-count').addEventListener('click', () => {
   renderSleepingList();
 });
 
+document.getElementById('recoverable-hint').addEventListener('click', () => {
+  slider.classList.add('show-sleeping');
+  renderSleepingList();
+});
+
 document.getElementById('sleeping-back-btn').addEventListener('click', () => {
   slider.classList.remove('show-sleeping');
 });
+
+// Saved tabs that no longer have an open suspended page — closed windows or
+// tabs an extension reload failed to recreate. Their page data still lives in
+// suspendedData, so they can be reopened until the orphan purge drops them.
+async function getRecoverableEntries() {
+  const base = chrome.runtime.getURL('suspended.html');
+  const openTids = new Set();
+  for (const tab of await chrome.tabs.query({})) {
+    if (!tab.url?.startsWith(base)) continue;
+    const tid = new URL(tab.url).searchParams.get('tid');
+    if (tid) openTids.add(tid);
+  }
+  const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
+  return Object.entries(suspendedData)
+    .filter(([tid, e]) => e?.url && !openTids.has(tid));
+}
 
 async function renderSleepingList() {
   const list  = document.getElementById('sleeping-list');
@@ -207,6 +236,7 @@ async function renderSleepingList() {
   const suffix = t('sleepingSuffix');
 
   empty.hidden = tabs.length > 0;
+  renderRecoverableList();
 
   tabs.forEach(tab => {
     const tid  = new URL(tab.url).searchParams.get('tid') ?? String(tab.id);
@@ -245,6 +275,76 @@ async function renderSleepingList() {
     list.appendChild(row);
   });
 }
+
+async function renderRecoverableList() {
+  const section = document.getElementById('recoverable-section');
+  const list    = document.getElementById('recoverable-list');
+  list.innerHTML = '';
+
+  const entries = await getRecoverableEntries();
+  section.hidden = entries.length === 0;
+  if (!entries.length) return;
+
+  entries.forEach(([tid, data]) => {
+    const row = document.createElement('div');
+    row.className = 'sleep-item';
+
+    if (data.favicon) {
+      const fav = document.createElement('img');
+      fav.className = 'sleep-fav';
+      fav.src = data.favicon;
+      fav.onerror = () => fav.remove();
+      row.appendChild(fav);
+    }
+
+    const title = document.createElement('span');
+    title.className = 'sleep-title';
+    title.textContent = data.title || t('untitledTab');
+    title.title = data.url;
+    row.appendChild(title);
+
+    const reopen = document.createElement('button');
+    reopen.className = 'sleep-wake';
+    reopen.textContent = t('reopen');
+    reopen.addEventListener('click', async () => {
+      chrome.tabs.create({ url: data.url, active: false });
+      await forgetRecoverable([tid]);
+      row.remove();
+      renderRecoverableList();
+      refreshStats();
+    });
+    row.appendChild(reopen);
+
+    list.appendChild(row);
+  });
+}
+
+// Reopening or forgetting a recoverable tab drops its saved data so it stops
+// showing up — a reopened tab is a live tab again, a forgotten one is gone.
+async function forgetRecoverable(tids) {
+  const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
+  for (const tid of tids) delete suspendedData[tid];
+  await chrome.storage.local.set({ suspendedData });
+}
+
+document.getElementById('recover-all').addEventListener('click', async () => {
+  const entries = await getRecoverableEntries();
+  if (!entries.length) return;
+  entries.forEach(([, data]) => chrome.tabs.create({ url: data.url, active: false }));
+  await forgetRecoverable(entries.map(([tid]) => tid));
+  renderRecoverableList();
+  refreshStats();
+  showToast(plural(entries.length, 'toastReopenedOne', 'toastReopenedOther'));
+});
+
+document.getElementById('recover-forget').addEventListener('click', async () => {
+  const entries = await getRecoverableEntries();
+  if (!entries.length) return;
+  await forgetRecoverable(entries.map(([tid]) => tid));
+  renderRecoverableList();
+  refreshStats();
+  showToast(plural(entries.length, 'toastForgotOne', 'toastForgotOther'));
+});
 
 // Timer options
 const TIMER_VALUES = [0, 5, 10, 20, 30, 60];

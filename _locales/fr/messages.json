@@ -53,6 +53,14 @@
   "wake":               { "message": "Réveiller" },
   "untitledTab":        { "message": "Onglet sans titre" },
 
+  "recoverable":        { "message": "Récupérables" },
+  "recoverableDesc":    { "message": "Onglets fermés dont la page a été sauvegardée" },
+  "recoverableHintOne":   { "message": "$1 onglet récupérable ›" },
+  "recoverableHintOther": { "message": "$1 onglets récupérables ›" },
+  "reopen":             { "message": "Rouvrir" },
+  "reopenAll":          { "message": "Tout rouvrir" },
+  "forgetAll":          { "message": "Tout oublier" },
+
   "toastSleeping":      { "message": "Onglet en sommeil 🌙" },
   "toastUrlAdded":      { "message": "URL ajoutée aux exceptions" },
   "toastUrlRemoved":    { "message": "URL retirée des exceptions" },
@@ -64,6 +72,10 @@
   "toastWakingOther":   { "message": "Réveil de $1 onglets" },
   "toastRemovedOne":    { "message": "$1 exception retirée" },
   "toastRemovedOther":  { "message": "$1 exceptions retirées" },
+  "toastReopenedOne":   { "message": "$1 onglet rouvert" },
+  "toastReopenedOther": { "message": "$1 onglets rouverts" },
+  "toastForgotOne":     { "message": "$1 onglet sauvegardé oublié" },
+  "toastForgotOther":   { "message": "$1 onglets sauvegardés oubliés" },
 
   "tabIsSleeping":      { "message": "Onglet en sommeil" },
   "thisTab":            { "message": "Cet onglet" },

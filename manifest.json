@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "__MSG_appDesc__",
   "default_locale": "en",
-  "permissions": ["tabs", "storage", "alarms", "scripting", "tabGroups", "contextMenus"],
+  "permissions": ["tabs", "storage", "alarms", "scripting", "tabGroups", "contextMenus", "history"],
   "commands": {
     "suspend-tab": {
       "suggested_key": { "default": "Alt+S" },

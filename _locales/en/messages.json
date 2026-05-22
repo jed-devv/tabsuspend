@@ -53,6 +53,14 @@
   "wake":               { "message": "Wake" },
   "untitledTab":        { "message": "Untitled tab" },
 
+  "recoverable":        { "message": "Recoverable" },
+  "recoverableDesc":    { "message": "Closed tabs whose pages were saved" },
+  "recoverableHintOne":   { "message": "$1 recoverable tab ›" },
+  "recoverableHintOther": { "message": "$1 recoverable tabs ›" },
+  "reopen":             { "message": "Reopen" },
+  "reopenAll":          { "message": "Reopen all" },
+  "forgetAll":          { "message": "Forget all" },
+
   "toastSleeping":      { "message": "Tab is now sleeping 🌙" },
   "toastUrlAdded":      { "message": "URL added to exceptions" },
   "toastUrlRemoved":    { "message": "URL removed from exceptions" },
@@ -64,6 +72,10 @@
   "toastWakingOther":   { "message": "Waking $1 tabs" },
   "toastRemovedOne":    { "message": "Removed $1 exception" },
   "toastRemovedOther":  { "message": "Removed $1 exceptions" },
+  "toastReopenedOne":   { "message": "Reopened $1 tab" },
+  "toastReopenedOther": { "message": "Reopened $1 tabs" },
+  "toastForgotOne":     { "message": "Forgot $1 saved tab" },
+  "toastForgotOther":   { "message": "Forgot $1 saved tabs" },
 
   "tabIsSleeping":      { "message": "Tab is sleeping" },
   "thisTab":            { "message": "This tab" },
