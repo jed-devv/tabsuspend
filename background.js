@@ -332,16 +332,13 @@ async function recordSuspension() {
   const yesterday = new Date(Date.now() - 86_400_000).toDateString();
 
   const data = await chrome.storage.local.get([
-    'suspendedToday', 'suspendedTotal', 'lastSuspendDate',
-    'currentStreak', 'totalRamMB',
+    'lastSuspendDate', 'currentStreak', 'totalRamMB',
   ]);
 
   const isNewDay      = data.lastSuspendDate !== today;
   const isConsecutive = data.lastSuspendDate === yesterday;
 
   await chrome.storage.local.set({
-    suspendedToday:  isNewDay ? 1 : (data.suspendedToday || 0) + 1,
-    suspendedTotal:  (data.suspendedTotal || 0) + 1,
     lastSuspendDate: today,
     currentStreak:   isNewDay
       ? (isConsecutive ? (data.currentStreak || 1) + 1 : 1)

@@ -77,10 +77,8 @@ function formatSleep(minutes) {
 
 function refreshStats() {
   chrome.storage.local.get(
-    ['suspendedToday', 'suspendedTotal', 'totalRamMB', 'currentStreak', 'totalSleepMinutes'],
+    ['totalRamMB', 'currentStreak', 'totalSleepMinutes'],
     data => {
-      document.getElementById('stat-today').textContent   = data.suspendedToday   ?? 0;
-      document.getElementById('stat-total').textContent   = data.suspendedTotal   ?? 0;
       document.getElementById('impact-ram').textContent   = formatRam(data.totalRamMB || 0);
       document.getElementById('impact-sleep').textContent = formatSleep(data.totalSleepMinutes || 0);
 
@@ -92,8 +90,9 @@ function refreshStats() {
 
   chrome.tabs.query({}, tabs => {
     const base = chrome.runtime.getURL('suspended.html');
-    document.getElementById('stat-sleeping').textContent =
-      tabs.filter(t => t.url?.startsWith(base)).length;
+    const n = tabs.filter(t => t.url?.startsWith(base)).length;
+    document.getElementById('sleeping-count').innerHTML =
+      n === 0 ? 'No tabs sleeping' : `<span>${n}</span> tab${n !== 1 ? 's' : ''} sleeping`;
   });
 }
 refreshStats();

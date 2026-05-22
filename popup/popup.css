@@ -253,44 +253,17 @@ body {
   100% { opacity: 0; transform: translateY(-55px) translateX(var(--dx, 0px)) scale(1); }
 }
 
-/* ── Stats row ─────────────────────────────────────── */
-.stats-row {
-  display: flex;
-  align-items: center;
-  background: var(--surf);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 16px;
-}
-
-.stat {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-}
-
-.stat-n {
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
-  font-size: 20px;
-  color: var(--lavender);
-  line-height: 1;
-}
-
-.stat-k {
-  font-size: 10px;
+/* ── Sleeping count ────────────────────────────────── */
+.sleeping-count {
+  text-align: center;
+  font-size: 11px;
   color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
+  letter-spacing: 0.3px;
 }
 
-.stat-sep {
-  width: 1px;
-  height: 28px;
-  background: var(--border);
-  flex-shrink: 0;
+.sleeping-count span {
+  color: var(--lavender);
+  font-weight: 600;
 }
 
 /* ── Slider (two views side by side) ──────────────── */
