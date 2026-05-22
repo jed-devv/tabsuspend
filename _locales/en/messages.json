@@ -39,6 +39,8 @@
   "suspendCurrentTab":  { "message": "Suspend current tab" },
   "configure":          { "message": "Configure" },
   "notSet":             { "message": "Not set" },
+  "exceptions":         { "message": "Exceptions" },
+  "exceptionsDesc":     { "message": "Sites that never sleep" },
   "exceptionsList":     { "message": "Exceptions list" },
   "removeSelected":     { "message": "Remove selected" },
   "removeAll":          { "message": "Remove all" },

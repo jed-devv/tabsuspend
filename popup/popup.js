@@ -174,6 +174,18 @@ backBtn.addEventListener('click', () => {
   slider.classList.remove('show-settings');
 });
 
+// ── Exceptions panel ─────────────────────────────────────────
+document.getElementById('exceptions-nav').addEventListener('click', () => {
+  chrome.storage.local.get(['excludedUrls', 'excludedDomains'], data => {
+    renderExceptionsList(data.excludedUrls || [], data.excludedDomains || []);
+  });
+  slider.classList.add('show-exceptions');
+});
+
+document.getElementById('exceptions-back-btn').addEventListener('click', () => {
+  slider.classList.remove('show-exceptions');
+});
+
 // ── Sleeping tabs panel ──────────────────────────────────────
 document.getElementById('sleeping-count').addEventListener('click', () => {
   slider.classList.add('show-sleeping');
@@ -277,6 +289,10 @@ function renderExceptionsList(urls, domains) {
 
   empty.hidden = all.length > 0;
   document.getElementById('exc-remove-all').disabled = all.length === 0;
+
+  const countEl = document.getElementById('exceptions-count');
+  countEl.textContent = all.length;
+  countEl.hidden = all.length === 0;
 
   all.forEach(({ type, value }) => {
     const label = document.createElement('label');

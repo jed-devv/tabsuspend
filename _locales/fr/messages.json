@@ -39,6 +39,8 @@
   "suspendCurrentTab":  { "message": "Mettre en veille l'onglet actuel" },
   "configure":          { "message": "Configurer" },
   "notSet":             { "message": "Non défini" },
+  "exceptions":         { "message": "Exceptions" },
+  "exceptionsDesc":     { "message": "Sites qui ne dorment jamais" },
   "exceptionsList":     { "message": "Liste des exceptions" },
   "removeSelected":     { "message": "Retirer la sélection" },
   "removeAll":          { "message": "Tout retirer" },
