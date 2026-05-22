@@ -39,11 +39,23 @@ async function registerSuspendedTab(tabId, tid) {
   await chrome.storage.session.set({ tabTid });
 }
 
-chrome.tabs.onRemoved.addListener(async tabId => {
+chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   const { tabTid = {} } = await chrome.storage.session.get('tabTid');
-  if (tabTid[tabId] != null) {
-    delete tabTid[tabId];
-    await chrome.storage.session.set({ tabTid });
+  const tid = tabTid[tabId];
+  if (tid == null) return;
+
+  delete tabTid[tabId];
+  await chrome.storage.session.set({ tabTid });
+
+  // Keep the saved data when the window/browser is closing so the tab can be
+  // restored on reopen; only forget it when the user closes the tab itself
+  // (or its group), so a deliberately closed tab is never resurrected.
+  if (removeInfo.isWindowClosing) return;
+
+  const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
+  if (suspendedData[tid] != null) {
+    delete suspendedData[tid];
+    await chrome.storage.local.set({ suspendedData });
   }
 });
 
