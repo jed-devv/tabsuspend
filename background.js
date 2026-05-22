@@ -34,10 +34,85 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // restart.
 async function registerSuspendedTab(tabId, tid) {
   if (tid == null || tid === '') return;
+  tid = String(tid);
   const { tabTid = {} } = await chrome.storage.session.get('tabTid');
-  tabTid[tabId] = String(tid);
+  tabTid[tabId] = tid;
   await chrome.storage.session.set({ tabTid });
+
+  // liveTids (persistent) mirrors which suspended pages are currently open.
+  // It survives an extension reload — which closes the extension's tabs —
+  // so the reload handler knows exactly which tabs to recreate, without
+  // touching the stale ghost entries left in suspendedData by closed windows.
+  const { liveTids = {} } = await chrome.storage.local.get('liveTids');
+  if (!liveTids[tid]) {
+    liveTids[tid] = true;
+    await chrome.storage.local.set({ liveTids });
+  }
+
+  // Refresh stored placement to this session's real window/index, so a stale
+  // windowId from a previous session (browser restart) can't misplace the tab
+  // on the next restore.
+  await refreshPlacement(tabId);
 }
+
+async function dropLiveTid(tid) {
+  const { liveTids = {} } = await chrome.storage.local.get('liveTids');
+  if (liveTids[tid]) {
+    delete liveTids[tid];
+    await chrome.storage.local.set({ liveTids });
+  }
+}
+
+// Keep a suspended tab's stored placement (window/index/pinned/group) in sync
+// with where the live tab actually is. windowId and index captured once at
+// suspend time go stale — across a browser restart windowIds are reassigned, so
+// a later restore would dump those tabs into the focused window. Refreshing on
+// every page load (register) and on move/attach keeps placement valid for the
+// common case: reloading the extension without a browser restart.
+async function refreshPlacement(tabId) {
+  const { tabTid = {} } = await chrome.storage.session.get('tabTid');
+  const tid = tabTid[tabId];
+  if (tid == null) return;
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (!tab) return;
+  const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
+  const entry = suspendedData[tid];
+  if (!entry) return;
+  entry.windowId = tab.windowId;
+  entry.index    = tab.index;
+  entry.pinned   = tab.pinned;
+  entry.groupId  = tab.groupId ?? -1;
+  await chrome.storage.local.set({ suspendedData });
+}
+
+chrome.tabs.onMoved.addListener(tabId => refreshPlacement(tabId));
+chrome.tabs.onAttached.addListener(tabId => refreshPlacement(tabId));
+
+// Sweep every currently-open suspended page and resync its stored placement to
+// the live tab. Reads tid straight from the URL (not the session tabTid map),
+// so it also repairs entries left stale by a previous session/browser restart.
+async function refreshAllOpenPlacements() {
+  const suspendedBase = chrome.runtime.getURL('suspended.html');
+  const tabs = await chrome.tabs.query({});
+  const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
+  let changed = false;
+  for (const t of tabs) {
+    if (!t.url?.startsWith(suspendedBase)) continue;
+    const tid = new URL(t.url).searchParams.get('tid');
+    const entry = tid && suspendedData[tid];
+    if (!entry) continue;
+    if (entry.windowId !== t.windowId || entry.index !== t.index ||
+        entry.pinned !== t.pinned || (entry.groupId ?? -1) !== (t.groupId ?? -1)) {
+      entry.windowId = t.windowId;
+      entry.index    = t.index;
+      entry.pinned   = t.pinned;
+      entry.groupId  = t.groupId ?? -1;
+      changed = true;
+    }
+  }
+  if (changed) await chrome.storage.local.set({ suspendedData });
+}
+refreshAllOpenPlacements();
 
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   const { tabTid = {} } = await chrome.storage.session.get('tabTid');
@@ -46,6 +121,11 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
 
   delete tabTid[tabId];
   await chrome.storage.session.set({ tabTid });
+
+  // The tab hosting this suspended page is gone, so it is no longer live.
+  // Drop it from liveTids in every case (user-close OR window-close) so a
+  // later extension reload only recreates tabs that are genuinely still open.
+  await dropLiveTid(tid);
 
   // Keep the saved data when the window/browser is closing so the tab can be
   // restored on reopen; only forget it when the user closes the tab itself
@@ -86,10 +166,27 @@ async function recordActivity(tabId) {
 
 // ── Restore tabs whose suspended page was lost on extension reload ──
 chrome.runtime.onStartup.addListener(restoreClosedSuspendedTabs);
-chrome.runtime.onInstalled.addListener(details => {
+chrome.runtime.onInstalled.addListener(async details => {
   chrome.alarms.create('tabnap-check', { periodInMinutes: 1 });
   createContextMenus();
-  if (details.reason === 'update') restoreClosedSuspendedTabs();
+  // Reloading the extension closes its tabs (the suspended.html pages); recreate
+  // the ones that were live. Driven by liveTids, so only genuinely-open tabs come
+  // back — ghost entries from previously-closed windows are never resurrected.
+  if (details.reason !== 'update') return;
+
+  // Some Chromium browsers (notably Brave) session-restore the extension's tabs
+  // themselves on reload, racing our restore: if we recreate a tab before the
+  // browser brings it back, we both end up creating it — and our copy lands in
+  // the focused window with a stale windowId, scattering tabs across windows.
+  // So wait a moment, let the browser settle, THEN restore — by which point the
+  // already-restored tabs are seen as open and we recreate nothing.
+  // A one-shot alarm is the safety net: a service-worker setTimeout is not
+  // guaranteed to survive, so if the worker is killed mid-wait the alarm still
+  // runs the reconciliation (restore is idempotent — it dedups open tabs).
+  chrome.alarms.create('tabnap-restore', { delayInMinutes: 1 });
+  await new Promise(r => setTimeout(r, 2000));
+  await restoreClosedSuspendedTabs();
+  chrome.alarms.clear('tabnap-restore');
 });
 
 // ── Context menu (right-click on a web page) ─────────────────
@@ -168,8 +265,9 @@ async function addDomainException(url) {
 }
 
 async function restoreClosedSuspendedTabs() {
-  const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
-  if (!Object.keys(suspendedData).length) return;
+  const { suspendedData = {}, liveTids = {} } =
+    await chrome.storage.local.get(['suspendedData', 'liveTids']);
+  if (!Object.keys(liveTids).length) return;
 
   const suspendedBase = chrome.runtime.getURL('suspended.html');
   const openWindowIds = new Set((await chrome.windows.getAll()).map(w => w.id));
@@ -184,14 +282,22 @@ async function restoreClosedSuspendedTabs() {
     if (tid) openTids.add(tid);
   }
 
-  // tid is the stable key — never rekey storage. Only create tabs for
-  // tids that aren't already open.
-  const toRestore = Object.entries(suspendedData)
-    .filter(([tid]) => !openTids.has(tid))
+  // Only recreate tabs that were live just before the reload/restart and
+  // aren't already open. Driving this from liveTids (not all of suspendedData)
+  // is what prevents resurrecting ghost entries from previously-closed windows.
+  const toRestore = Object.keys(liveTids)
+    .filter(tid => !openTids.has(tid) && suspendedData[tid]?.url)
+    .map(tid => [tid, suspendedData[tid]])
     .sort(([, a], [, b]) => (a.index ?? 0) - (b.index ?? 0));
 
-  const createdForGroup = []; // { newTabId, newWindowId, data }
+  const createdForGroup = [];  // { newTabId, newWindowId, data }
+  const toPosition      = [];  // { tabId, windowId, index } — ungrouped tabs to place
 
+  // 1) Create every tab WITHOUT an index. Passing a stale absolute index to
+  //    chrome.tabs.create can throw (out of range, or a pinned tab landing in
+  //    the unpinned region), which previously dropped the tab at the end and
+  //    scrambled the order. We pin at creation (so pinned tabs land in the
+  //    pinned strip) and reposition afterwards with the forgiving tabs.move.
   for (const [tid, data] of toRestore) {
     if (!data.url) continue;
 
@@ -199,19 +305,34 @@ async function restoreClosedSuspendedTabs() {
     if (data.windowId && openWindowIds.has(data.windowId)) {
       createProps.windowId = data.windowId;
     }
-    if (typeof data.index === 'number') createProps.index = data.index;
     if (data.pinned) createProps.pinned = true;
 
     let newTab;
     try {
       newTab = await chrome.tabs.create(createProps);
     } catch {
-      newTab = await chrome.tabs.create({ url: suspendedBase + '?tid=' + tid, active: false });
+      continue;
     }
+    if (!newTab) continue;
 
-    if (newTab && (data.groupId ?? -1) !== -1) {
+    if ((data.groupId ?? -1) !== -1) {
+      // Grouped tabs are positioned by the grouping step below (a group is
+      // always contiguous), so don't fight it with an individual move.
       createdForGroup.push({ newTabId: newTab.id, newWindowId: newTab.windowId, data });
+    } else if (typeof data.index === 'number') {
+      toPosition.push({ tabId: newTab.id, windowId: newTab.windowId, index: data.index });
     }
+  }
+
+  // 2) Reposition ungrouped tabs to their original absolute index, per window,
+  //    in ascending order. Moving ascending means an already-placed lower index
+  //    is never disturbed by a later, higher move. tabs.move clamps an
+  //    out-of-range index to the end instead of throwing.
+  toPosition.sort((a, b) => a.index - b.index);
+  for (const { tabId, index } of toPosition) {
+    try {
+      await chrome.tabs.move(tabId, { index });
+    } catch {}
   }
 
   // Restore tab groups
@@ -243,7 +364,8 @@ chrome.alarms.get('tabnap-check', alarm => {
 });
 
 chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name === 'tabnap-check') autoSuspendCheck();
+  if (alarm.name === 'tabnap-check')   { autoSuspendCheck(); refreshAllOpenPlacements(); }
+  if (alarm.name === 'tabnap-restore') restoreClosedSuspendedTabs();
 });
 
 async function autoSuspendCheck() {
@@ -325,6 +447,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
   delete tabTid[tabId];
   await chrome.storage.session.set({ tabTid });
+
+  await dropLiveTid(tid);
 
   const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
   const entry = suspendedData[tid];
