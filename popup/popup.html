@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TabNap</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <canvas id="starfield"></canvas>
+
+  <div class="slider" id="slider">
+
+    <!-- ── Main view ─────────────────────────────────── -->
+    <div class="view" id="view-main">
+      <div class="container">
+
+        <header class="header">
+          <div class="logo">
+            <svg class="logo-mark" viewBox="0 0 36 36" fill="none">
+              <rect width="36" height="36" rx="8" fill="#12122a"/>
+              <circle cx="17" cy="17" r="9" fill="#f0c94a"/>
+              <circle cx="21" cy="14" r="7.5" fill="#12122a"/>
+              <circle cx="7"  cy="9"  r="1.4" fill="#b8a8ff" opacity="0.9"/>
+              <circle cx="5"  cy="25" r="1"   fill="#f0c94a"  opacity="0.6"/>
+              <circle cx="11" cy="30" r="1.1" fill="#b8a8ff" opacity="0.7"/>
+            </svg>
+            <span class="logo-text">Tab<em>Nap</em></span>
+          </div>
+          <button class="icon-btn" id="settings-btn" title="Settings">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </header>
+
+        <div class="tab-pill" id="tab-pill">
+          <img class="tab-fav" id="tab-fav" src="" alt="" hidden>
+          <span class="tab-fav-fallback" id="tab-fav-fallback">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          </span>
+          <span class="tab-name" id="tab-name">Loading…</span>
+        </div>
+
+        <button class="suspend-btn" id="suspend-btn">
+          <div class="zzz-layer" id="zzz-layer" aria-hidden="true"></div>
+          <div class="btn-glow"></div>
+          <svg class="btn-moon" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="20" fill="#f0c94a"/>
+            <circle cx="40" cy="26" r="16" fill="#13132a"/>
+            <circle cx="14" cy="18" r="2"   fill="#b8a8ff" opacity="0.8"/>
+            <circle cx="10" cy="44" r="1.4" fill="#f0c94a"  opacity="0.6"/>
+            <circle cx="20" cy="52" r="1.6" fill="#b8a8ff" opacity="0.5"/>
+          </svg>
+          <span class="btn-label">Suspend this tab</span>
+          <span class="btn-sub">Restore instantly with one click</span>
+        </button>
+
+        <div class="stats-row">
+          <div class="stat">
+            <span class="stat-n" id="stat-today">0</span>
+            <span class="stat-k">Today</span>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat">
+            <span class="stat-n" id="stat-sleeping">0</span>
+            <span class="stat-k">Sleeping</span>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat">
+            <span class="stat-n" id="stat-total">0</span>
+            <span class="stat-k">All time</span>
+          </div>
+        </div>
+
+        <div class="impact-row">
+          <div class="impact-item">
+            <span class="impact-icon">💾</span>
+            <span class="impact-val" id="impact-ram">0 MB</span>
+            <span class="impact-label">RAM saved</span>
+          </div>
+          <div class="impact-sep"></div>
+          <div class="impact-item">
+            <span class="impact-icon" id="streak-icon">✦</span>
+            <span class="impact-val" id="impact-streak">0</span>
+            <span class="impact-label">day streak</span>
+          </div>
+          <div class="impact-sep"></div>
+          <div class="impact-item">
+            <span class="impact-icon">⏱</span>
+            <span class="impact-val" id="impact-sleep">0 min</span>
+            <span class="impact-label">slept total</span>
+          </div>
+        </div>
+
+        <div class="quick-actions">
+          <button class="qa-btn" id="qa-never-url">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            Never suspend this URL
+          </button>
+          <button class="qa-btn" id="qa-never-domain">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            Never suspend this domain
+          </button>
+          <button class="qa-btn qa-warn" id="qa-suspend-all">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            Suspend all other tabs
+          </button>
+          <button class="qa-btn qa-wake" id="qa-unsuspend-all">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            Unsuspend all tabs
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Settings view ──────────────────────────────── -->
+    <div class="view" id="view-settings">
+      <div class="container">
+
+        <header class="header">
+          <button class="icon-btn" id="back-btn" title="Back">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <span class="panel-title">Settings</span>
+          <div style="width:30px"></div>
+        </header>
+
+        <div class="setting-section">
+          <p class="section-label">Auto-suspend</p>
+          <p class="section-desc">Suspend inactive tabs after</p>
+          <div class="timer-grid" id="timer-grid">
+            <button class="timer-opt" data-val="0">Never</button>
+            <button class="timer-opt" data-val="5">5 min</button>
+            <button class="timer-opt" data-val="10">10 min</button>
+            <button class="timer-opt" data-val="20">20 min</button>
+            <button class="timer-opt" data-val="30">30 min</button>
+            <button class="timer-opt" data-val="60">1 hour</button>
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <p class="section-label">Exclusions</p>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-name">Pinned tabs</span>
+              <span class="toggle-desc">Never suspend pinned tabs</span>
+            </div>
+            <button class="toggle" id="toggle-pinned" role="switch" aria-checked="true"></button>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-name">Tabs with audio</span>
+              <span class="toggle-desc">Skip tabs playing sound</span>
+            </div>
+            <button class="toggle" id="toggle-audible" role="switch" aria-checked="true"></button>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-name">Unsaved form inputs</span>
+              <span class="toggle-desc">Skip tabs with text typed in forms</span>
+            </div>
+            <button class="toggle" id="toggle-forms" role="switch" aria-checked="true"></button>
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <p class="section-label">Keyboard shortcut</p>
+          <div class="shortcut-row">
+            <div class="toggle-info">
+              <span class="toggle-name">Suspend current tab</span>
+              <kbd class="shortcut-key" id="shortcut-display">–</kbd>
+            </div>
+            <button class="exc-action-btn" id="shortcut-configure">Configure</button>
+          </div>
+        </div>
+
+        <div class="setting-section" id="exceptions-section">
+          <div class="exc-header">
+            <p class="section-label">Exceptions list</p>
+            <div class="exc-header-actions">
+              <button class="exc-action-btn" id="exc-remove-selected" disabled>Remove selected</button>
+              <button class="exc-action-btn exc-danger" id="exc-remove-all">Remove all</button>
+            </div>
+          </div>
+          <p class="exceptions-empty" id="exceptions-empty">No exceptions yet</p>
+          <div id="exceptions-list"></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /slider -->
+
+  <div class="toast" id="toast"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

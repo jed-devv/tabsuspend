@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Chrome extension that suspends inactive tabs to free memory, similar to The Great Suspender or TabSuspender.
+**TabNap** — Chrome extension that suspends inactive tabs to free memory, similar to The Great Suspender or TabSuspender.
 
 ## Architecture
 

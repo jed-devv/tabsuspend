@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sleeping…</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #08081a;
+      --moon:    #f0c94a;
+      --lav:     #b8a8ff;
+      --text:    #ddd8f4;
+      --dim:     rgba(221, 216, 244, 0.45);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    /* ── Starfield ── */
+    #stars {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    /* ── Radial glow at centre ── */
+    .halo {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 480px;
+      height: 480px;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(
+        circle,
+        rgba(240, 201, 74, 0.06) 0%,
+        rgba(123, 106, 255, 0.04) 45%,
+        transparent 70%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Layout ── */
+    main {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 0;
+      padding: 32px;
+      text-align: center;
+    }
+
+    /* ── Moon ── */
+    .moon-wrap {
+      position: relative;
+      margin-bottom: 36px;
+      animation: moonFloat 5s ease-in-out infinite;
+    }
+
+    @keyframes moonFloat {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-10px); }
+    }
+
+    .moon-svg {
+      width: 110px;
+      height: 110px;
+      filter: drop-shadow(0 0 32px rgba(240, 201, 74, 0.35));
+    }
+
+    /* Orbiting zzz */
+    .zzz-orbit {
+      position: absolute;
+      top: -8px;
+      right: -12px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
+    .zzz-orbit span {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      color: var(--lav);
+      line-height: 1;
+      animation: zFloat 2.8s ease-in-out infinite;
+    }
+    .zzz-orbit span:nth-child(1) { font-size: 12px; opacity: 0.4; animation-delay: 0s; }
+    .zzz-orbit span:nth-child(2) { font-size: 16px; opacity: 0.65; animation-delay: 0.3s; }
+    .zzz-orbit span:nth-child(3) { font-size: 22px; opacity: 0.85; animation-delay: 0.6s; }
+
+    @keyframes zFloat {
+      0%, 100% { transform: translateY(0) translateX(0); opacity: inherit; }
+      50%       { transform: translateY(-6px) translateX(3px); }
+    }
+
+    /* ── Title ── */
+    .sleeping-label {
+      font-size: 11px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--lav);
+      opacity: 0.6;
+      margin-bottom: 14px;
+      font-weight: 400;
+    }
+
+    .page-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(22px, 4vw, 30px);
+      color: var(--text);
+      line-height: 1.25;
+      max-width: 520px;
+      margin-bottom: 10px;
+    }
+
+    .page-favicon {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      vertical-align: middle;
+      margin-right: 8px;
+      object-fit: contain;
+    }
+
+    .page-url {
+      font-size: 12px;
+      color: var(--dim);
+      max-width: 480px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 40px;
+    }
+
+    /* ── Wake button ── */
+    .wake-btn {
+      position: relative;
+      padding: 14px 40px;
+      background: transparent;
+      border: 1.5px solid rgba(240, 201, 74, 0.4);
+      border-radius: 40px;
+      color: var(--moon);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.4px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .wake-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(240, 201, 74, 0.08);
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+
+    .wake-btn:hover {
+      border-color: rgba(240, 201, 74, 0.75);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(240, 201, 74, 0.18), 0 0 0 1px rgba(240, 201, 74, 0.08);
+    }
+    .wake-btn:hover::before { opacity: 1; }
+    .wake-btn:active { transform: translateY(0) scale(0.97); }
+
+    /* ── Footer ── */
+    .footer {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      color: var(--dim);
+      opacity: 0.5;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+
+    .footer span { color: var(--lav); opacity: 0.8; }
+  </style>
+</head>
+<body>
+
+  <canvas id="stars"></canvas>
+  <div class="halo"></div>
+
+  <main>
+    <div class="moon-wrap">
+      <svg class="moon-svg" viewBox="0 0 110 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="52" cy="54" r="36" fill="#f0c94a"/>
+        <circle cx="66" cy="44" r="30" fill="#08081a"/>
+        <circle cx="20" cy="26" r="3"   fill="#b8a8ff" opacity="0.75"/>
+        <circle cx="14" cy="72" r="2"   fill="#f0c94a"  opacity="0.55"/>
+        <circle cx="28" cy="88" r="2.5" fill="#b8a8ff" opacity="0.6"/>
+        <circle cx="88" cy="30" r="2"   fill="#b8a8ff" opacity="0.4"/>
+        <circle cx="92" cy="78" r="1.5" fill="#f0c94a"  opacity="0.45"/>
+      </svg>
+      <div class="zzz-orbit">
+        <span>z</span>
+        <span>z</span>
+        <span>Z</span>
+      </div>
+    </div>
+
+    <p class="sleeping-label">Tab is sleeping</p>
+    <h1 class="page-title">
+      <img class="page-favicon" id="page-favicon" src="" alt="">
+      <span id="page-title">This tab</span>
+    </h1>
+    <p class="page-url" id="page-url"></p>
+
+    <button class="wake-btn" id="wake-btn">Wake up this tab</button>
+  </main>
+
+  <div class="footer">
+    <span>TabNap</span> · suspended at <span id="suspended-at">–</span>
+  </div>
+
+  <script src="suspended.js"></script>
+</body>
+</html>
