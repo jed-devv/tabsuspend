@@ -3,7 +3,7 @@
   "name": "TabNap",
   "version": "1.0.0",
   "description": "Suspend inactive tabs to free memory — let your tabs take a nap.",
-  "permissions": ["tabs", "storage", "alarms", "scripting", "tabGroups"],
+  "permissions": ["tabs", "storage", "alarms", "scripting", "tabGroups", "contextMenus"],
   "commands": {
     "suspend-tab": {
       "suggested_key": { "default": "Alt+S" },

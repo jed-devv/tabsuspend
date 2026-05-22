@@ -70,8 +70,83 @@ async function recordActivity(tabId) {
 chrome.runtime.onStartup.addListener(restoreClosedSuspendedTabs);
 chrome.runtime.onInstalled.addListener(details => {
   chrome.alarms.create('tabnap-check', { periodInMinutes: 1 });
+  createContextMenus();
   if (details.reason === 'update') restoreClosedSuspendedTabs();
 });
+
+// ── Context menu (right-click on a web page) ─────────────────
+function createContextMenus() {
+  const onPages = {
+    contexts: ['page', 'frame', 'link', 'image', 'video', 'audio', 'selection', 'editable'],
+    documentUrlPatterns: ['http://*/*', 'https://*/*'],
+  };
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({ id: 'tabnap', title: 'TabNap', ...onPages });
+    chrome.contextMenus.create({ id: 'suspend-this',   parentId: 'tabnap', title: 'Suspend this tab',   ...onPages });
+    chrome.contextMenus.create({ id: 'suspend-others', parentId: 'tabnap', title: 'Suspend other tabs', ...onPages });
+    chrome.contextMenus.create({ id: 'tabnap-sep', parentId: 'tabnap', type: 'separator', ...onPages });
+    chrome.contextMenus.create({ id: 'never-site', parentId: 'tabnap', title: 'Never suspend this site', ...onPages });
+    chrome.contextMenus.create({ id: 'never-url',  parentId: 'tabnap', title: 'Never suspend this URL',  ...onPages });
+  });
+}
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (!tab) return;
+  switch (info.menuItemId) {
+    case 'suspend-this':   suspendTab(tab.id);          break;
+    case 'suspend-others': suspendOtherTabs(tab.id);    break;
+    case 'never-site':     addDomainException(tab.url); break;
+    case 'never-url':      addUrlException(tab.url);    break;
+  }
+});
+
+async function suspendOtherTabs(activeId) {
+  const tabs = await chrome.tabs.query({});
+  const base = chrome.runtime.getURL('suspended.html');
+  const s = await chrome.storage.local.get(
+    ['excludePinned', 'excludeAudible', 'excludedUrls', 'excludedDomains']);
+  const excludePinned   = s.excludePinned  !== false;
+  const excludeAudible  = s.excludeAudible !== false;
+  const excludedUrls    = s.excludedUrls    || [];
+  const excludedDomains = s.excludedDomains || [];
+
+  for (const t of tabs) {
+    if (t.id === activeId || !t.url) continue;
+    if (
+      t.url.startsWith(base) ||
+      t.url.startsWith('chrome://') ||
+      t.url.startsWith('chrome-extension://') ||
+      t.url.startsWith('about:')
+    ) continue;
+    if (excludePinned  && t.pinned)  continue;
+    if (excludeAudible && t.audible) continue;
+    if (excludedUrls.includes(t.url)) continue;
+    try {
+      if (excludedDomains.includes(new URL(t.url).hostname)) continue;
+    } catch {}
+    await suspendTab(t.id);
+  }
+}
+
+async function addUrlException(url) {
+  if (!url) return;
+  const { excludedUrls = [] } = await chrome.storage.local.get('excludedUrls');
+  if (!excludedUrls.includes(url)) {
+    excludedUrls.push(url);
+    await chrome.storage.local.set({ excludedUrls });
+  }
+}
+
+async function addDomainException(url) {
+  let domain = '';
+  try { domain = new URL(url).hostname; } catch { return; }
+  if (!domain) return;
+  const { excludedDomains = [] } = await chrome.storage.local.get('excludedDomains');
+  if (!excludedDomains.includes(domain)) {
+    excludedDomains.push(domain);
+    await chrome.storage.local.set({ excludedDomains });
+  }
+}
 
 async function restoreClosedSuspendedTabs() {
   const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
