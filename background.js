@@ -59,6 +59,24 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   }
 });
 
+// ── Toolbar badge: number of sleeping tabs ───────────────────
+chrome.action.setBadgeBackgroundColor({ color: '#7b6aff' });
+
+async function updateBadge() {
+  const base = chrome.runtime.getURL('suspended.html');
+  const tabs = await chrome.tabs.query({});
+  const n = tabs.filter(t => t.url?.startsWith(base)).length;
+  chrome.action.setBadgeText({ text: n > 0 ? String(n) : '' });
+}
+
+chrome.tabs.onUpdated.addListener((_id, info) => {
+  if (info.url || info.status === 'complete') updateBadge();
+});
+chrome.tabs.onCreated.addListener(() => updateBadge());
+chrome.tabs.onRemoved.addListener(() => updateBadge());
+chrome.runtime.onStartup.addListener(updateBadge);
+updateBadge();
+
 // ── Activity tracking ────────────────────────────────────────
 async function recordActivity(tabId) {
   const { lastActivity = {} } = await chrome.storage.session.get('lastActivity');
