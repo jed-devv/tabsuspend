@@ -82,6 +82,7 @@ async function refreshPlacement(tabId) {
   entry.index    = tab.index;
   entry.pinned   = tab.pinned;
   entry.groupId  = tab.groupId ?? -1;
+  delete entry.orphanedAt; // alive again — no longer an orphan
   await chrome.storage.local.set({ suspendedData });
 }
 
@@ -94,25 +95,78 @@ chrome.tabs.onAttached.addListener(tabId => refreshPlacement(tabId));
 async function refreshAllOpenPlacements() {
   const suspendedBase = chrome.runtime.getURL('suspended.html');
   const tabs = await chrome.tabs.query({});
-  const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
-  let changed = false;
+  const { suspendedData = {}, liveTids = {} } =
+    await chrome.storage.local.get(['suspendedData', 'liveTids']);
+  let changed = false, liveChanged = false;
   for (const t of tabs) {
     if (!t.url?.startsWith(suspendedBase)) continue;
     const tid = new URL(t.url).searchParams.get('tid');
-    const entry = tid && suspendedData[tid];
+    if (!tid) continue;
+
+    // Reconcile liveTids from ground truth: an open suspended page is live even
+    // if its register message was lost (e.g. the worker was asleep at load).
+    // Only ever ADD here — removal stays the job of onRemoved, so the brief
+    // window where reload closes a tab doesn't wrongly drop it from liveTids.
+    if (!liveTids[tid]) { liveTids[tid] = true; liveChanged = true; }
+
+    const entry = suspendedData[tid];
     if (!entry) continue;
     if (entry.windowId !== t.windowId || entry.index !== t.index ||
-        entry.pinned !== t.pinned || (entry.groupId ?? -1) !== (t.groupId ?? -1)) {
+        entry.pinned !== t.pinned || (entry.groupId ?? -1) !== (t.groupId ?? -1) ||
+        entry.orphanedAt != null) {
       entry.windowId = t.windowId;
       entry.index    = t.index;
       entry.pinned   = t.pinned;
       entry.groupId  = t.groupId ?? -1;
+      delete entry.orphanedAt; // open right now — not an orphan
+      changed = true;
+    }
+  }
+  const patch = {};
+  if (changed)     patch.suspendedData = suspendedData;
+  if (liveChanged) patch.liveTids      = liveTids;
+  if (changed || liveChanged) await chrome.storage.local.set(patch);
+}
+refreshAllOpenPlacements();
+
+// Drop orphaned suspended-tab data (windows closed and never reopened) once it
+// is older than the grace period, so storage can't grow without bound.
+const ORPHAN_GRACE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+async function purgeStaleOrphans() {
+  const { suspendedData = {}, liveTids = {} } =
+    await chrome.storage.local.get(['suspendedData', 'liveTids']);
+
+  // An entry is alive if it's tracked as live or currently open as a suspended
+  // page. Anything else is an orphan (its window closed and never came back).
+  const suspendedBase = chrome.runtime.getURL('suspended.html');
+  const openTids = new Set();
+  for (const t of await chrome.tabs.query({})) {
+    if (!t.url?.startsWith(suspendedBase)) continue;
+    const tid = new URL(t.url).searchParams.get('tid');
+    if (tid) openTids.add(tid);
+  }
+
+  const now = Date.now();
+  const cutoff = now - ORPHAN_GRACE_MS;
+  let changed = false;
+  for (const [tid, entry] of Object.entries(suspendedData)) {
+    if (!entry) continue;
+    const alive = liveTids[tid] || openTids.has(tid);
+    if (alive) continue;
+    if (entry.orphanedAt == null) {
+      // Start the grace clock — also migrates legacy orphans from before this
+      // field existed, so they eventually get purged instead of lingering.
+      entry.orphanedAt = now;
+      changed = true;
+    } else if (entry.orphanedAt < cutoff) {
+      delete suspendedData[tid];
       changed = true;
     }
   }
   if (changed) await chrome.storage.local.set({ suspendedData });
 }
-refreshAllOpenPlacements();
+purgeStaleOrphans();
 
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   const { tabTid = {} } = await chrome.storage.session.get('tabTid');
@@ -127,16 +181,22 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   // later extension reload only recreates tabs that are genuinely still open.
   await dropLiveTid(tid);
 
-  // Keep the saved data when the window/browser is closing so the tab can be
-  // restored on reopen; only forget it when the user closes the tab itself
-  // (or its group), so a deliberately closed tab is never resurrected.
-  if (removeInfo.isWindowClosing) return;
-
   const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
-  if (suspendedData[tid] != null) {
+  if (suspendedData[tid] == null) return;
+
+  if (removeInfo.isWindowClosing) {
+    // The window/browser is closing: keep the data so the tab can be restored
+    // if the window is reopened, but stamp it as orphaned. The periodic purge
+    // drops orphans older than the grace period, so data from windows that are
+    // never reopened can't accumulate forever. refreshPlacement clears the
+    // stamp if the tab ever comes back to life.
+    suspendedData[tid].orphanedAt = Date.now();
+  } else {
+    // The user closed the tab (or its group) deliberately — forget it so it is
+    // never resurrected.
     delete suspendedData[tid];
-    await chrome.storage.local.set({ suspendedData });
   }
+  await chrome.storage.local.set({ suspendedData });
 });
 
 // ── Toolbar badge: number of sleeping tabs ───────────────────
@@ -364,7 +424,7 @@ chrome.alarms.get('tabnap-check', alarm => {
 });
 
 chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name === 'tabnap-check')   { autoSuspendCheck(); refreshAllOpenPlacements(); }
+  if (alarm.name === 'tabnap-check')   { autoSuspendCheck(); refreshAllOpenPlacements(); purgeStaleOrphans(); }
   if (alarm.name === 'tabnap-restore') restoreClosedSuspendedTabs();
 });
 
