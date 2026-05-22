@@ -335,26 +335,4 @@ async function suspendTab(tabId) {
   await chrome.storage.local.set({ suspendedData });
 
   chrome.tabs.update(tabId, { url: suspendedBase + '?tid=' + tabId });
-
-  recordSuspension();
-}
-
-async function recordSuspension() {
-  const today     = new Date().toDateString();
-  const yesterday = new Date(Date.now() - 86_400_000).toDateString();
-
-  const data = await chrome.storage.local.get([
-    'lastSuspendDate', 'currentStreak', 'totalRamMB',
-  ]);
-
-  const isNewDay      = data.lastSuspendDate !== today;
-  const isConsecutive = data.lastSuspendDate === yesterday;
-
-  await chrome.storage.local.set({
-    lastSuspendDate: today,
-    currentStreak:   isNewDay
-      ? (isConsecutive ? (data.currentStreak || 1) + 1 : 1)
-      : (data.currentStreak || 1),
-    totalRamMB: (data.totalRamMB || 0) + 150,
-  });
 }

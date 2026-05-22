@@ -62,6 +62,8 @@ chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
 });
 
 // ── Stats ────────────────────────────────────────────────────
+const EST_MB_PER_TAB = 150;
+
 function formatRam(mb) {
   if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB';
   return mb + ' MB';
@@ -76,23 +78,18 @@ function formatSleep(minutes) {
 }
 
 function refreshStats() {
-  chrome.storage.local.get(
-    ['totalRamMB', 'currentStreak', 'totalSleepMinutes'],
-    data => {
-      document.getElementById('impact-ram').textContent   = formatRam(data.totalRamMB || 0);
-      document.getElementById('impact-sleep').textContent = formatSleep(data.totalSleepMinutes || 0);
-
-      const streak = data.currentStreak || 0;
-      document.getElementById('impact-streak').textContent = streak;
-      document.getElementById('streak-icon').textContent   = streak >= 2 ? '🔥' : '✦';
-    }
-  );
+  chrome.storage.local.get(['totalSleepMinutes'], data => {
+    document.getElementById('impact-sleep').textContent = formatSleep(data.totalSleepMinutes || 0);
+  });
 
   chrome.tabs.query({}, tabs => {
     const base = chrome.runtime.getURL('suspended.html');
     const n = tabs.filter(t => t.url?.startsWith(base)).length;
     document.getElementById('sleeping-count').innerHTML =
       n === 0 ? 'No tabs sleeping' : `<span>${n}</span> tab${n !== 1 ? 's' : ''} sleeping`;
+    // Estimated RAM currently freed by the sleeping tabs (~150 MB/tab — real
+    // per-tab memory isn't available to extensions).
+    document.getElementById('impact-ram').textContent = formatRam(n * EST_MB_PER_TAB);
   });
 }
 refreshStats();
