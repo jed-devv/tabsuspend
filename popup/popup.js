@@ -359,14 +359,33 @@ document.getElementById('qa-suspend-all').addEventListener('click', async () => 
   const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
   const tabs = await chrome.tabs.query({});
   const base = chrome.runtime.getURL('suspended.html');
-  const targets = tabs.filter(t =>
-    t.id !== active?.id &&
-    t.url &&
-    !t.url.startsWith(base) &&
-    !t.url.startsWith('chrome://') &&
-    !t.url.startsWith('chrome-extension://') &&
-    !t.url.startsWith('about:')
+
+  const {
+    excludePinned = true,
+    excludeAudible = true,
+    excludedUrls = [],
+    excludedDomains = [],
+  } = await chrome.storage.local.get(
+    ['excludePinned', 'excludeAudible', 'excludedUrls', 'excludedDomains']
   );
+
+  const targets = tabs.filter(t => {
+    if (t.id === active?.id || !t.url) return false;
+    if (
+      t.url.startsWith(base) ||
+      t.url.startsWith('chrome://') ||
+      t.url.startsWith('chrome-extension://') ||
+      t.url.startsWith('about:')
+    ) return false;
+    if (excludePinned  && t.pinned)  return false;
+    if (excludeAudible && t.audible) return false;
+    if (excludedUrls.includes(t.url)) return false;
+    try {
+      if (excludedDomains.includes(new URL(t.url).hostname)) return false;
+    } catch {}
+    return true;
+  });
+
   showToast(`Suspending ${targets.length} tab${targets.length !== 1 ? 's' : ''}`);
   await chrome.runtime.sendMessage({ action: 'suspendAllTabs', tabIds: targets.map(t => t.id) });
   setTimeout(() => { refreshStats(); window.close(); }, 900);

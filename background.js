@@ -19,7 +19,32 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'activity' && sender.tab?.id) {
     recordActivity(sender.tab.id);
   }
-  return true;
+  if (msg.action === 'register' && sender.tab?.id) {
+    registerSuspendedTab(sender.tab.id, msg.tid);
+  }
+  // Fire-and-forget messages (activity, register) send no response; returning
+  // false keeps the message channel from staying open and erroring on close.
+  return false;
+});
+
+// Maps a live tab id to the stable `tid` of the suspended page it hosts.
+// tid survives browser restarts (it's in the URL) while tab ids do not, so
+// this lets the wake-up handler clean up suspendedData by the stable key.
+// The suspended page re-registers on every load, rebuilding the map after a
+// restart.
+async function registerSuspendedTab(tabId, tid) {
+  if (tid == null || tid === '') return;
+  const { tabTid = {} } = await chrome.storage.session.get('tabTid');
+  tabTid[tabId] = String(tid);
+  await chrome.storage.session.set({ tabTid });
+}
+
+chrome.tabs.onRemoved.addListener(async tabId => {
+  const { tabTid = {} } = await chrome.storage.session.get('tabTid');
+  if (tabTid[tabId] != null) {
+    delete tabTid[tabId];
+    await chrome.storage.session.set({ tabTid });
+  }
 });
 
 // ── Activity tracking ────────────────────────────────────────
@@ -167,26 +192,38 @@ function tabHasUnsavedInputs(tabId) {
   });
 }
 
-// ── Wake-up: record sleep duration + reset activity ──────────
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+// ── Wake-up: record sleep duration + clean up suspended data ──
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status !== 'loading') return;
-  const { activeSuspensions = {} } = await chrome.storage.session.get('activeSuspensions');
-  if (!activeSuspensions[tabId]) return;
 
-  const minutes = Math.floor((Date.now() - activeSuspensions[tabId]) / 60_000);
-  delete activeSuspensions[tabId];
-  await chrome.storage.session.set({ activeSuspensions });
+  const suspendedBase = chrome.runtime.getURL('suspended.html');
+  // Navigating TO (or reloading) the suspended page is the suspension itself,
+  // not a wake-up — leave the stored data intact.
+  const here = changeInfo.url ?? tab.url ?? '';
+  if (here.startsWith(suspendedBase)) return;
 
-  if (minutes > 0) {
-    const { totalSleepMinutes = 0 } = await chrome.storage.local.get('totalSleepMinutes');
-    await chrome.storage.local.set({ totalSleepMinutes: totalSleepMinutes + minutes });
+  // Only tabs that hosted a registered suspended page can be waking up.
+  const { tabTid = {} } = await chrome.storage.session.get('tabTid');
+  const tid = tabTid[tabId];
+  if (tid == null) return;
+
+  delete tabTid[tabId];
+  await chrome.storage.session.set({ tabTid });
+
+  const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
+  const entry = suspendedData[tid];
+  if (!entry) return;
+
+  if (entry.suspendedAt) {
+    const minutes = Math.floor((Date.now() - entry.suspendedAt) / 60_000);
+    if (minutes > 0) {
+      const { totalSleepMinutes = 0 } = await chrome.storage.local.get('totalSleepMinutes');
+      await chrome.storage.local.set({ totalSleepMinutes: totalSleepMinutes + minutes });
+    }
   }
 
-  const { savedSuspended = {} } = await chrome.storage.local.get('savedSuspended');
-  if (savedSuspended[tabId]) {
-    delete savedSuspended[tabId];
-    await chrome.storage.local.set({ savedSuspended });
-  }
+  delete suspendedData[tid];
+  await chrome.storage.local.set({ suspendedData });
 
   recordActivity(tabId);
 });
@@ -281,19 +318,16 @@ async function suspendTab(tabId) {
     pinned:      tab.pinned,
     groupId,
     groupInfo,
+    suspendedAt: Date.now(),
   };
   await chrome.storage.local.set({ suspendedData });
 
   chrome.tabs.update(tabId, { url: suspendedBase + '?tid=' + tabId });
 
-  const { savedSuspended = {} } = await chrome.storage.local.get('savedSuspended');
-  savedSuspended[tabId] = finalUrl;
-  await chrome.storage.local.set({ savedSuspended });
-
-  recordSuspension(tabId);
+  recordSuspension();
 }
 
-async function recordSuspension(tabId) {
+async function recordSuspension() {
   const today     = new Date().toDateString();
   const yesterday = new Date(Date.now() - 86_400_000).toDateString();
 
@@ -314,8 +348,4 @@ async function recordSuspension(tabId) {
       : (data.currentStreak || 1),
     totalRamMB: (data.totalRamMB || 0) + 150,
   });
-
-  const { activeSuspensions = {} } = await chrome.storage.session.get('activeSuspensions');
-  activeSuspensions[tabId] = Date.now();
-  await chrome.storage.session.set({ activeSuspensions });
 }

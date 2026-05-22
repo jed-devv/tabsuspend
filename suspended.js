@@ -36,6 +36,11 @@ requestAnimationFrame(paint);
 // ── Load tab data from session storage ────────────────────
 const tid = new URLSearchParams(location.search).get('tid');
 
+// Tell the background which stable tid this live tab hosts, so it can clean up
+// suspendedData by the stable key when the tab wakes up (tab ids change across
+// browser restarts; tid does not).
+if (tid) chrome.runtime.sendMessage({ action: 'register', tid });
+
 let origUrl = '';
 
 chrome.tabs.getCurrent(async tab => {
