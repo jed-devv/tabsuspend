@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "TabNap",
+  "name": "__MSG_appName__",
   "version": "1.0.0",
-  "description": "Suspend inactive tabs to free memory — let your tabs take a nap.",
+  "description": "__MSG_appDesc__",
+  "default_locale": "en",
   "permissions": ["tabs", "storage", "alarms", "scripting", "tabGroups", "contextMenus"],
   "commands": {
     "suspend-tab": {
       "suggested_key": { "default": "Alt+S" },
-      "description": "Suspend the current tab"
+      "description": "__MSG_cmdSuspendTab__"
     }
   },
   "background": {

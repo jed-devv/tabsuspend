@@ -1,3 +1,16 @@
+// ── i18n ─────────────────────────────────────────────────────
+const t = (k, ...subs) => chrome.i18n.getMessage(k, subs.length ? subs.map(String) : undefined);
+const plural = (n, oneKey, otherKey) => t(n === 1 ? oneKey : otherKey, n);
+
+document.querySelectorAll('[data-i18n]').forEach(el => {
+  const m = t(el.dataset.i18n);
+  if (m) el.textContent = m;
+});
+document.querySelectorAll('[data-i18n-title]').forEach(el => {
+  const m = t(el.dataset.i18nTitle);
+  if (m) el.title = m;
+});
+
 // ── Starfield ───────────────────────────────────────────────
 const canvas = document.getElementById('starfield');
 const ctx    = canvas.getContext('2d');
@@ -42,7 +55,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
   const favEl      = document.getElementById('tab-fav');
   const fallbackEl = document.getElementById('tab-fav-fallback');
 
-  nameEl.textContent = tab.title || 'Untitled tab';
+  nameEl.textContent = tab.title || t('untitledTab');
 
   if (tab.favIconUrl) {
     favEl.src    = tab.favIconUrl;
@@ -55,7 +68,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
   if (tab.url?.startsWith(base)) {
     const btn = document.getElementById('suspend-btn');
     btn.disabled = true;
-    document.querySelector('.btn-sub').textContent = 'This tab is already sleeping';
+    document.querySelector('.btn-sub').textContent = t('alreadySleeping');
   }
 
   refreshExclusionState(tab);
@@ -85,8 +98,9 @@ function refreshStats() {
   chrome.tabs.query({}, tabs => {
     const base = chrome.runtime.getURL('suspended.html');
     const n = tabs.filter(t => t.url?.startsWith(base)).length;
-    document.getElementById('sleeping-count').innerHTML =
-      n === 0 ? 'No tabs sleeping' : `<span>${n}</span> tab${n !== 1 ? 's' : ''} sleeping`;
+    const countEl = document.getElementById('sleeping-count');
+    if (n === 0) countEl.textContent = t('noTabsSleeping');
+    else countEl.innerHTML = `<span>${n}</span> ${n === 1 ? t('tabSleepingOne') : t('tabSleepingOther')}`;
     // Estimated RAM currently freed by the sleeping tabs (~150 MB/tab — real
     // per-tab memory isn't available to extensions).
     document.getElementById('impact-ram').textContent = formatRam(n * EST_MB_PER_TAB);
@@ -132,7 +146,7 @@ document.getElementById('suspend-btn').addEventListener('click', async () => {
   setTimeout(() => {
     chrome.runtime.sendMessage({ action: 'suspendTab', tabId: tab.id }, () => {
       refreshStats();
-      showToast('Tab is now sleeping 🌙');
+      showToast(t('toastSleeping'));
       setTimeout(() => window.close(), 900);
     });
   }, 380);
@@ -176,13 +190,14 @@ async function renderSleepingList() {
   list.innerHTML = '';
 
   const base = chrome.runtime.getURL('suspended.html');
-  const tabs = (await chrome.tabs.query({})).filter(t => t.url?.startsWith(base));
+  const tabs = (await chrome.tabs.query({})).filter(tab => tab.url?.startsWith(base));
   const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
+  const suffix = t('sleepingSuffix');
 
   empty.hidden = tabs.length > 0;
 
-  tabs.forEach(t => {
-    const tid  = new URL(t.url).searchParams.get('tid') ?? String(t.id);
+  tabs.forEach(tab => {
+    const tid  = new URL(tab.url).searchParams.get('tid') ?? String(tab.id);
     const data = suspendedData[tid] || {};
     const orig = data.url;
 
@@ -199,16 +214,16 @@ async function renderSleepingList() {
 
     const title = document.createElement('span');
     title.className = 'sleep-title';
-    title.textContent = data.title || (t.title || '').replace(/ – sleeping$/, '') || 'Untitled tab';
+    title.textContent = data.title || (tab.title || '').replace(suffix, '') || t('untitledTab');
     title.title = orig || '';
     row.appendChild(title);
 
     const wake = document.createElement('button');
     wake.className = 'sleep-wake';
-    wake.textContent = 'Wake';
+    wake.textContent = t('wake');
     wake.disabled = !orig;
     wake.addEventListener('click', () => {
-      chrome.tabs.update(t.id, { url: orig });
+      chrome.tabs.update(tab.id, { url: orig });
       row.remove();
       if (!list.querySelector('.sleep-item')) empty.hidden = false;
       refreshStats();
@@ -224,7 +239,7 @@ const TIMER_VALUES = [0, 5, 10, 20, 30, 60];
 
 chrome.commands.getAll(commands => {
   const cmd = commands.find(c => c.name === 'suspend-tab');
-  document.getElementById('shortcut-display').textContent = cmd?.shortcut || 'Not set';
+  document.getElementById('shortcut-display').textContent = cmd?.shortcut || t('notSet');
 });
 
 document.getElementById('shortcut-configure').addEventListener('click', () => {
@@ -319,7 +334,7 @@ document.getElementById('exc-remove-selected').addEventListener('click', async (
 
   loadSettings();
   if (currentTab) refreshExclusionState(currentTab);
-  showToast(`Removed ${checked.length} exception${checked.length !== 1 ? 's' : ''}`);
+  showToast(plural(checked.length, 'toastRemovedOne', 'toastRemovedOther'));
 });
 
 document.getElementById('exc-remove-all').addEventListener('click', async () => {
@@ -382,12 +397,12 @@ document.getElementById('qa-never-url').addEventListener('click', async () => {
     excludedUrls.push(url);
     await chrome.storage.local.set({ excludedUrls });
     document.getElementById('qa-never-url').classList.add('active');
-    showToast('URL added to exceptions');
+    showToast(t('toastUrlAdded'));
   } else {
     excludedUrls.splice(idx, 1);
     await chrome.storage.local.set({ excludedUrls });
     document.getElementById('qa-never-url').classList.remove('active');
-    showToast('URL removed from exceptions');
+    showToast(t('toastUrlRemoved'));
   }
 });
 
@@ -403,12 +418,12 @@ document.getElementById('qa-never-domain').addEventListener('click', async () =>
     excludedDomains.push(domain);
     await chrome.storage.local.set({ excludedDomains });
     document.getElementById('qa-never-domain').classList.add('active');
-    showToast(`${domain} added to exceptions`);
+    showToast(t('toastDomainAdded', domain));
   } else {
     excludedDomains.splice(idx, 1);
     await chrome.storage.local.set({ excludedDomains });
     document.getElementById('qa-never-domain').classList.remove('active');
-    showToast(`${domain} removed from exceptions`);
+    showToast(t('toastDomainRemoved', domain));
   }
 });
 
@@ -443,7 +458,7 @@ document.getElementById('qa-suspend-all').addEventListener('click', async () => 
     return true;
   });
 
-  showToast(`Suspending ${targets.length} tab${targets.length !== 1 ? 's' : ''}`);
+  showToast(plural(targets.length, 'toastSuspendingOne', 'toastSuspendingOther'));
   await chrome.runtime.sendMessage({ action: 'suspendAllTabs', tabIds: targets.map(t => t.id) });
   setTimeout(() => { refreshStats(); window.close(); }, 900);
 });
@@ -458,7 +473,7 @@ document.getElementById('qa-unsuspend-all').addEventListener('click', async () =
     const orig = suspendedData[tid]?.url;
     if (orig) chrome.tabs.update(t.id, { url: orig });
   }
-  showToast(`Waking ${suspended.length} tab${suspended.length !== 1 ? 's' : ''}`);
+  showToast(plural(suspended.length, 'toastWakingOne', 'toastWakingOther'));
   setTimeout(() => { refreshStats(); window.close(); }, 900);
 });
 

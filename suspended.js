@@ -1,3 +1,14 @@
+// ── i18n ───────────────────────────────────────────────────
+const msg = (k, ...subs) => chrome.i18n.getMessage(k, subs.length ? subs.map(String) : undefined);
+document.querySelectorAll('[data-i18n]').forEach(el => {
+  const m = msg(el.dataset.i18n);
+  if (m) el.textContent = m;
+});
+document.querySelectorAll('[data-i18n-title]').forEach(el => {
+  const m = msg(el.dataset.i18nTitle);
+  if (m) el.title = m;
+});
+
 // ── Starfield ──────────────────────────────────────────────
 const canvas = document.getElementById('stars');
 const ctx    = canvas.getContext('2d');
@@ -51,12 +62,12 @@ chrome.tabs.getCurrent(async tab => {
 
   origUrl = data.url || '';
 
-  const title       = data.title       || 'Untitled tab';
+  const title       = data.title       || msg('untitledTab');
   const favicon     = data.favicon     || '';
   const grayFavicon = data.grayFavicon || '';
 
   document.getElementById('page-title').textContent = title;
-  document.title = title + ' – sleeping';
+  document.title = title + msg('sleepingSuffix');
 
   const urlEl = document.getElementById('page-url');
   try {

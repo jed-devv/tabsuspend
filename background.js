@@ -99,12 +99,13 @@ function createContextMenus() {
     documentUrlPatterns: ['http://*/*', 'https://*/*'],
   };
   chrome.contextMenus.removeAll(() => {
+    const msg = k => chrome.i18n.getMessage(k);
     chrome.contextMenus.create({ id: 'tabnap', title: 'TabNap', ...onPages });
-    chrome.contextMenus.create({ id: 'suspend-this',   parentId: 'tabnap', title: 'Suspend this tab',   ...onPages });
-    chrome.contextMenus.create({ id: 'suspend-others', parentId: 'tabnap', title: 'Suspend other tabs', ...onPages });
+    chrome.contextMenus.create({ id: 'suspend-this',   parentId: 'tabnap', title: msg('suspendThisTab'),  ...onPages });
+    chrome.contextMenus.create({ id: 'suspend-others', parentId: 'tabnap', title: msg('ctxSuspendOthers'), ...onPages });
     chrome.contextMenus.create({ id: 'tabnap-sep', parentId: 'tabnap', type: 'separator', ...onPages });
-    chrome.contextMenus.create({ id: 'never-site', parentId: 'tabnap', title: 'Never suspend this site', ...onPages });
-    chrome.contextMenus.create({ id: 'never-url',  parentId: 'tabnap', title: 'Never suspend this URL',  ...onPages });
+    chrome.contextMenus.create({ id: 'never-site', parentId: 'tabnap', title: msg('ctxNeverSite'), ...onPages });
+    chrome.contextMenus.create({ id: 'never-url',  parentId: 'tabnap', title: msg('neverUrl'),     ...onPages });
   });
 }
 
