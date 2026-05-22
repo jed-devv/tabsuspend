@@ -160,6 +160,65 @@ backBtn.addEventListener('click', () => {
   slider.classList.remove('show-settings');
 });
 
+// ── Sleeping tabs panel ──────────────────────────────────────
+document.getElementById('sleeping-count').addEventListener('click', () => {
+  slider.classList.add('show-sleeping');
+  renderSleepingList();
+});
+
+document.getElementById('sleeping-back-btn').addEventListener('click', () => {
+  slider.classList.remove('show-sleeping');
+});
+
+async function renderSleepingList() {
+  const list  = document.getElementById('sleeping-list');
+  const empty = document.getElementById('sleeping-empty');
+  list.innerHTML = '';
+
+  const base = chrome.runtime.getURL('suspended.html');
+  const tabs = (await chrome.tabs.query({})).filter(t => t.url?.startsWith(base));
+  const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
+
+  empty.hidden = tabs.length > 0;
+
+  tabs.forEach(t => {
+    const tid  = new URL(t.url).searchParams.get('tid') ?? String(t.id);
+    const data = suspendedData[tid] || {};
+    const orig = data.url;
+
+    const row = document.createElement('div');
+    row.className = 'sleep-item';
+
+    if (data.favicon) {
+      const fav = document.createElement('img');
+      fav.className = 'sleep-fav';
+      fav.src = data.favicon;
+      fav.onerror = () => fav.remove();
+      row.appendChild(fav);
+    }
+
+    const title = document.createElement('span');
+    title.className = 'sleep-title';
+    title.textContent = data.title || (t.title || '').replace(/ – sleeping$/, '') || 'Untitled tab';
+    title.title = orig || '';
+    row.appendChild(title);
+
+    const wake = document.createElement('button');
+    wake.className = 'sleep-wake';
+    wake.textContent = 'Wake';
+    wake.disabled = !orig;
+    wake.addEventListener('click', () => {
+      chrome.tabs.update(t.id, { url: orig });
+      row.remove();
+      if (!list.querySelector('.sleep-item')) empty.hidden = false;
+      refreshStats();
+    });
+    row.appendChild(wake);
+
+    list.appendChild(row);
+  });
+}
+
 // Timer options
 const TIMER_VALUES = [0, 5, 10, 20, 30, 60];
 
