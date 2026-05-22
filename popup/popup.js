@@ -215,14 +215,21 @@ document.getElementById('sleeping-back-btn').addEventListener('click', () => {
 async function getRecoverableEntries() {
   const base = chrome.runtime.getURL('suspended.html');
   const openTids = new Set();
+  const liveTabIds = new Set();
   for (const tab of await chrome.tabs.query({})) {
+    liveTabIds.add(String(tab.id));
     if (!tab.url?.startsWith(base)) continue;
     const tid = new URL(tab.url).searchParams.get('tid');
     if (tid) openTids.add(tid);
   }
   const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
+  // A just-suspended tab still hosts its original id (tid === that id) while it
+  // navigates to suspended.html, so a tabs query can't yet see it as an open
+  // suspended page. Excluding live tab ids keeps it out of the recoverable list
+  // during that brief window. After a reload the recreated tabs get new ids, so
+  // genuinely-lost tids (closed windows, failed restores) still show up.
   return Object.entries(suspendedData)
-    .filter(([tid, e]) => e?.url && !openTids.has(tid));
+    .filter(([tid, e]) => e?.url && !openTids.has(tid) && !liveTabIds.has(tid));
 }
 
 async function renderSleepingList() {
