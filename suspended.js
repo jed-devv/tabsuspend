@@ -101,7 +101,5 @@ document.getElementById('suspended-at').textContent =
 // ── Wake on click anywhere ─────────────────────────────────
 document.addEventListener('click', () => {
   if (!origUrl) return;
-  chrome.tabs.getCurrent(tab => {
-    chrome.tabs.update(tab.id, { url: origUrl });
-  });
+  location.replace(origUrl);
 });
