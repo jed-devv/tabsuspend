@@ -184,18 +184,13 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   const { suspendedData = {} } = await chrome.storage.local.get('suspendedData');
   if (suspendedData[tid] == null) return;
 
-  if (removeInfo.isWindowClosing) {
-    // The window/browser is closing: keep the data so the tab can be restored
-    // if the window is reopened, but stamp it as orphaned. The periodic purge
-    // drops orphans older than the grace period, so data from windows that are
-    // never reopened can't accumulate forever. refreshPlacement clears the
-    // stamp if the tab ever comes back to life.
-    suspendedData[tid].orphanedAt = Date.now();
-  } else {
-    // The user closed the tab (or its group) deliberately — forget it so it is
-    // never resurrected.
-    delete suspendedData[tid];
-  }
+  // Keep suspended-tab data in both cases (window closing or deliberate close),
+  // stamped as orphaned so the periodic purge can eventually clean it up.
+  // This lets Ctrl+Shift+T restore a closed suspended tab and still wake it up.
+  // liveTids was already dropped above, so extension-reload restore won't
+  // resurrect deliberately-closed tabs — only the browser's own session restore
+  // (Ctrl+Shift+T) can bring them back.
+  suspendedData[tid].orphanedAt = Date.now();
   await chrome.storage.local.set({ suspendedData });
 });
 
