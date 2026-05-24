@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TabNap – Privacy Policy / Politique de confidentialité</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0d0d1a;
+      color: #d4cff5;
+      line-height: 1.7;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 760px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 3rem; }
+    header h1 { font-size: 1.8rem; color: #b8a8ff; margin-bottom: .4rem; }
+    header p  { color: #8a84b0; font-size: .9rem; }
+    .lang-switch {
+      display: flex; gap: .5rem; justify-content: center; margin-top: 1rem;
+    }
+    .lang-switch button {
+      background: #1e1a36; border: 1px solid #3a3260; color: #b8a8ff;
+      padding: .3rem .9rem; border-radius: 999px; cursor: pointer; font-size: .85rem;
+    }
+    .lang-switch button.active { background: #3a3260; }
+    section { margin-bottom: 2rem; }
+    h2 { color: #b8a8ff; font-size: 1.1rem; margin-bottom: .6rem; }
+    p, li { color: #c8c2e8; margin-bottom: .5rem; }
+    ul { padding-left: 1.4rem; }
+    .badge {
+      display: inline-block; background: #1b3a2a; color: #5ddb9a;
+      border: 1px solid #2d6b4a; border-radius: 4px;
+      font-size: .8rem; padding: .1rem .5rem; margin-bottom: 1rem;
+    }
+    footer { text-align: center; margin-top: 3rem; color: #5a547a; font-size: .85rem; }
+    [lang="fr"] { display: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>TabNap</h1>
+    <p>Privacy Policy &nbsp;/&nbsp; Politique de confidentialité</p>
+    <div class="lang-switch">
+      <button class="active" onclick="setLang('en')">English</button>
+      <button onclick="setLang('fr')">Français</button>
+    </div>
+  </header>
+
+  <!-- ── ENGLISH ── -->
+  <div lang="en">
+    <div class="badge">&#10003; No data collection &nbsp;·&nbsp; No servers &nbsp;·&nbsp; 100% local</div>
+
+    <section>
+      <h2>Overview</h2>
+      <p>TabNap is a Chrome extension that suspends inactive tabs to free memory. It does <strong>not</strong> collect, transmit, or share any personal data. All information stays on your device.</p>
+    </section>
+
+    <section>
+      <h2>What data TabNap stores — and where</h2>
+      <p>TabNap stores the following data locally on your device using the Chrome Storage API (<code>chrome.storage.local</code> and <code>chrome.storage.session</code>). Nothing is ever sent to any server.</p>
+      <ul>
+        <li><strong>Suspended tab data</strong> — URL, page title, and favicon of each suspended tab, stored to restore the tab when you click it.</li>
+        <li><strong>User settings</strong> — your chosen inactivity timeout, whitelist (excluded URLs and domains), and toggle preferences (e.g. exclude pinned tabs).</li>
+        <li><strong>Aggregate sleep time</strong> — a running total of minutes tabs have been suspended, displayed in the popup as a memory-savings indicator.</li>
+        <li><strong>Session state</strong> — temporary mappings between tab IDs and suspension records, kept only for the current browser session.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Permissions explained</h2>
+      <ul>
+        <li><strong>tabs</strong> — read tab URLs and titles to suspend and restore them.</li>
+        <li><strong>storage</strong> — persist suspended-tab data and settings on your device.</li>
+        <li><strong>alarms</strong> — schedule periodic inactivity checks (Chrome's reliable timer API for service workers).</li>
+        <li><strong>scripting</strong> — detect unsaved form inputs or active media streams so those tabs are not suspended.</li>
+        <li><strong>tabGroups</strong> — preserve and restore tab group membership and metadata when tabs are suspended.</li>
+        <li><strong>contextMenus</strong> — add a right-click menu for quick suspend/whitelist actions.</li>
+        <li><strong>history</strong> — <em>used only to delete</em> the <code>suspended.html</code> entry that Chrome logs when a tab is suspended, so your browsing history is not cluttered with internal extension pages.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Third-party services</h2>
+      <p>TabNap does not use any third-party services, analytics, advertising networks, or crash-reporting tools.</p>
+    </section>
+
+    <section>
+      <h2>Data sharing</h2>
+      <p>No data is shared with any party — including the developer — because no data ever leaves your device.</p>
+    </section>
+
+    <section>
+      <h2>Contact</h2>
+      <p>Questions or concerns? Open an issue on the <a href="https://github.com/jed-devv/tabsuspend" style="color:#b8a8ff">GitHub repository</a>.</p>
+    </section>
+
+    <section>
+      <h2>Changes to this policy</h2>
+      <p>If the privacy practices of TabNap change in a future version, this page will be updated and the extension version number will be bumped. The effective date is shown below.</p>
+    </section>
+
+    <footer>Effective date: 2026-05-24 &nbsp;·&nbsp; TabNap v1.0.0</footer>
+  </div>
+
+  <!-- ── FRANÇAIS ── -->
+  <div lang="fr">
+    <div class="badge">&#10003; Aucune collecte de données &nbsp;·&nbsp; Aucun serveur &nbsp;·&nbsp; 100% local</div>
+
+    <section>
+      <h2>Vue d'ensemble</h2>
+      <p>TabNap est une extension Chrome qui suspend les onglets inactifs pour libérer de la mémoire. Elle ne collecte, ne transmet et ne partage <strong>aucune</strong> donnée personnelle. Toutes les informations restent sur votre appareil.</p>
+    </section>
+
+    <section>
+      <h2>Données stockées par TabNap — et où</h2>
+      <p>TabNap stocke les données suivantes localement sur votre appareil via l'API Chrome Storage (<code>chrome.storage.local</code> et <code>chrome.storage.session</code>). Rien n'est jamais envoyé à un serveur.</p>
+      <ul>
+        <li><strong>Données des onglets suspendus</strong> — l'URL, le titre de la page et le favicon de chaque onglet suspendu, afin de pouvoir le restaurer lorsque vous cliquez dessus.</li>
+        <li><strong>Paramètres utilisateur</strong> — le délai d'inactivité choisi, la liste blanche (URLs et domaines exclus) et les préférences de bascule (ex. : exclure les onglets épinglés).</li>
+        <li><strong>Temps de veille cumulé</strong> — total en minutes pendant lesquelles des onglets ont été suspendus, affiché dans la popup comme indicateur d'économies mémoire.</li>
+        <li><strong>État de session</strong> — correspondances temporaires entre identifiants d'onglets et enregistrements de suspension, conservées uniquement pour la session navigateur en cours.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Justification des permissions</h2>
+      <ul>
+        <li><strong>tabs</strong> — lire les URLs et titres des onglets pour les suspendre et les restaurer.</li>
+        <li><strong>storage</strong> — persister les données des onglets suspendus et les paramètres sur votre appareil.</li>
+        <li><strong>alarms</strong> — planifier des vérifications périodiques d'inactivité (API de minuterie fiable pour les service workers Chrome).</li>
+        <li><strong>scripting</strong> — détecter les formulaires non sauvegardés ou les flux médias actifs afin de ne pas suspendre ces onglets.</li>
+        <li><strong>tabGroups</strong> — préserver et restaurer l'appartenance à un groupe d'onglets et ses métadonnées lors de la suspension.</li>
+        <li><strong>contextMenus</strong> — ajouter un menu contextuel (clic droit) pour des actions rapides de suspension / liste blanche.</li>
+        <li><strong>history</strong> — <em>utilisé uniquement pour supprimer</em> l'entrée <code>suspended.html</code> que Chrome enregistre lors de la suspension d'un onglet, afin que votre historique de navigation ne soit pas encombré de pages internes de l'extension.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Services tiers</h2>
+      <p>TabNap n'utilise aucun service tiers, outil d'analyse, réseau publicitaire ou système de rapport d'erreurs.</p>
+    </section>
+
+    <section>
+      <h2>Partage des données</h2>
+      <p>Aucune donnée n'est partagée avec quelque tiers que ce soit — y compris le développeur — car aucune donnée ne quitte votre appareil.</p>
+    </section>
+
+    <section>
+      <h2>Contact</h2>
+      <p>Questions ou remarques ? Ouvrez un ticket sur le <a href="https://github.com/jed-devv/tabsuspend" style="color:#b8a8ff">dépôt GitHub</a>.</p>
+    </section>
+
+    <section>
+      <h2>Modifications de cette politique</h2>
+      <p>Si les pratiques de confidentialité de TabNap évoluent dans une future version, cette page sera mise à jour et le numéro de version de l'extension sera incrémenté. La date d'effet est indiquée ci-dessous.</p>
+    </section>
+
+    <footer>Date d'entrée en vigueur : 2026-05-24 &nbsp;·&nbsp; TabNap v1.0.0</footer>
+  </div>
+
+</div>
+<script>
+  function setLang(lang) {
+    document.querySelectorAll('[lang]').forEach(el => {
+      el.style.display = el.getAttribute('lang') === lang ? '' : 'none';
+    });
+    document.querySelectorAll('.lang-switch button').forEach((btn, i) => {
+      btn.classList.toggle('active', (i === 0 && lang === 'en') || (i === 1 && lang === 'fr'));
+    });
+  }
+</script>
+</body>
+</html>
