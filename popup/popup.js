@@ -184,7 +184,7 @@ backBtn.addEventListener('click', () => {
 
 // ── Exceptions panel ─────────────────────────────────────────
 document.getElementById('exceptions-nav').addEventListener('click', () => {
-  chrome.storage.local.get(['excludedUrls', 'excludedDomains'], data => {
+  chrome.storage.sync.get(['excludedUrls', 'excludedDomains'], data => {
     renderExceptionsList(data.excludedUrls || [], data.excludedDomains || []);
   });
   slider.classList.add('show-exceptions');
@@ -366,7 +366,7 @@ document.getElementById('shortcut-configure').addEventListener('click', () => {
 });
 
 function loadSettings() {
-  chrome.storage.local.get(
+  chrome.storage.sync.get(
     ['autoSuspendMinutes', 'excludePinned', 'excludeAudible', 'excludeUnsavedForms', 'excludeActiveMedia', 'excludedUrls', 'excludedDomains'],
     data => {
       const minutes = data.autoSuspendMinutes ?? 20;
@@ -448,9 +448,9 @@ document.getElementById('exc-remove-selected').addEventListener('click', async (
   const rmDomains = checked.filter(c => c.dataset.type === 'domain').map(c => c.dataset.value);
 
   const { excludedUrls = [], excludedDomains = [] } =
-    await chrome.storage.local.get(['excludedUrls', 'excludedDomains']);
+    await chrome.storage.sync.get(['excludedUrls', 'excludedDomains']);
 
-  await chrome.storage.local.set({
+  await chrome.storage.sync.set({
     excludedUrls:    excludedUrls.filter(u => !rmUrls.includes(u)),
     excludedDomains: excludedDomains.filter(d => !rmDomains.includes(d)),
   });
@@ -461,7 +461,7 @@ document.getElementById('exc-remove-selected').addEventListener('click', async (
 });
 
 document.getElementById('exc-remove-all').addEventListener('click', async () => {
-  await chrome.storage.local.set({ excludedUrls: [], excludedDomains: [] });
+  await chrome.storage.sync.set({ excludedUrls: [], excludedDomains: [] });
   loadSettings();
   if (currentTab) refreshExclusionState(currentTab);
   showToast(t('toastAllExceptionsRemoved'));
@@ -473,7 +473,7 @@ document.getElementById('timer-grid').addEventListener('click', e => {
   const val = Number(btn.dataset.val);
   document.querySelectorAll('.timer-opt').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  chrome.storage.local.set({ autoSuspendMinutes: val });
+  chrome.storage.sync.set({ autoSuspendMinutes: val });
 });
 
 function setToggle(id, on) {
@@ -491,7 +491,7 @@ Object.keys(TOGGLE_KEYS).forEach(id => {
   document.getElementById(id).addEventListener('click', function () {
     const on = !this.classList.contains('on');
     this.classList.toggle('on', on);
-    chrome.storage.local.set({ [TOGGLE_KEYS[id]]: on });
+    chrome.storage.sync.set({ [TOGGLE_KEYS[id]]: on });
   });
 });
 
@@ -500,7 +500,7 @@ async function refreshExclusionState(tab) {
   if (!tab?.url || tab.url.startsWith(chrome.runtime.getURL('suspended.html'))) return;
 
   const { excludedUrls = [], excludedDomains = [] } =
-    await chrome.storage.local.get(['excludedUrls', 'excludedDomains']);
+    await chrome.storage.sync.get(['excludedUrls', 'excludedDomains']);
 
   const urlActive = excludedUrls.includes(tab.url);
   let domain = '';
@@ -514,16 +514,16 @@ async function refreshExclusionState(tab) {
 document.getElementById('qa-never-url').addEventListener('click', async () => {
   if (!currentTab?.url) return;
   const url = currentTab.url;
-  const { excludedUrls = [] } = await chrome.storage.local.get('excludedUrls');
+  const { excludedUrls = [] } = await chrome.storage.sync.get('excludedUrls');
   const idx = excludedUrls.indexOf(url);
   if (idx === -1) {
     excludedUrls.push(url);
-    await chrome.storage.local.set({ excludedUrls });
+    await chrome.storage.sync.set({ excludedUrls });
     document.getElementById('qa-never-url').classList.add('active');
     showToast(t('toastUrlAdded'));
   } else {
     excludedUrls.splice(idx, 1);
-    await chrome.storage.local.set({ excludedUrls });
+    await chrome.storage.sync.set({ excludedUrls });
     document.getElementById('qa-never-url').classList.remove('active');
     showToast(t('toastUrlRemoved'));
   }
@@ -535,16 +535,16 @@ document.getElementById('qa-never-domain').addEventListener('click', async () =>
   try { domain = new URL(currentTab.url).hostname; } catch {}
   if (!domain) return;
 
-  const { excludedDomains = [] } = await chrome.storage.local.get('excludedDomains');
+  const { excludedDomains = [] } = await chrome.storage.sync.get('excludedDomains');
   const idx = excludedDomains.indexOf(domain);
   if (idx === -1) {
     excludedDomains.push(domain);
-    await chrome.storage.local.set({ excludedDomains });
+    await chrome.storage.sync.set({ excludedDomains });
     document.getElementById('qa-never-domain').classList.add('active');
     showToast(t('toastDomainAdded', domain));
   } else {
     excludedDomains.splice(idx, 1);
-    await chrome.storage.local.set({ excludedDomains });
+    await chrome.storage.sync.set({ excludedDomains });
     document.getElementById('qa-never-domain').classList.remove('active');
     showToast(t('toastDomainRemoved', domain));
   }

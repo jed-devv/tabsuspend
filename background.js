@@ -339,10 +339,10 @@ async function suspendOtherTabs(activeId) {
 
 async function addUrlException(url) {
   if (!url) return;
-  const { excludedUrls = [] } = await chrome.storage.local.get('excludedUrls');
+  const { excludedUrls = [] } = await chrome.storage.sync.get('excludedUrls');
   if (!excludedUrls.includes(url)) {
     excludedUrls.push(url);
-    await chrome.storage.local.set({ excludedUrls });
+    await chrome.storage.sync.set({ excludedUrls });
   }
 }
 
@@ -350,10 +350,10 @@ async function addDomainException(url) {
   let domain = '';
   try { domain = new URL(url).hostname; } catch { return; }
   if (!domain) return;
-  const { excludedDomains = [] } = await chrome.storage.local.get('excludedDomains');
+  const { excludedDomains = [] } = await chrome.storage.sync.get('excludedDomains');
   if (!excludedDomains.includes(domain)) {
     excludedDomains.push(domain);
-    await chrome.storage.local.set({ excludedDomains });
+    await chrome.storage.sync.set({ excludedDomains });
   }
 }
 
@@ -634,7 +634,7 @@ async function suspendTab(tabId) {
   ) return;
 
   const { excludedUrls = [], excludedDomains = [] } =
-    await chrome.storage.local.get(['excludedUrls', 'excludedDomains']);
+    await chrome.storage.sync.get(['excludedUrls', 'excludedDomains']);
   if (excludedUrls.includes(tab.url)) return;
   try {
     if (excludedDomains.includes(new URL(tab.url).hostname)) return;
