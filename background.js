@@ -16,6 +16,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })();
     return true;
   }
+  if (msg.action === 'suspendOtherTabs') {
+    suspendOtherTabs(msg.activeId).then(count => sendResponse({ ok: true, count }));
+    return true;
+  }
   if (msg.action === 'activity' && sender.tab?.id) {
     recordActivity(sender.tab.id);
   }
@@ -26,6 +30,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // false keeps the message channel from staying open and erroring on close.
   return false;
 });
+
+// Returns true when a tab should be skipped by any bulk-suspend operation.
+// Covers the protocol/system URL guard, pinned, audible, and the user's
+// URL/domain exclusion lists — the four conditions duplicated across all
+// suspend-many paths.
+function tabMatchesExclusions(tab, { base, excludePinned, excludeAudible, excludedUrls, excludedDomains }) {
+  if (!tab.url) return true;
+  if (
+    tab.url.startsWith(base) ||
+    tab.url.startsWith('chrome://') ||
+    tab.url.startsWith('chrome-extension://') ||
+    tab.url.startsWith('about:')
+  ) return true;
+  if (excludePinned  && tab.pinned)  return true;
+  if (excludeAudible && tab.audible) return true;
+  if (excludedUrls.includes(tab.url)) return true;
+  try { if (excludedDomains.includes(new URL(tab.url).hostname)) return true; } catch {}
+  return false;
+}
 
 // Maps a live tab id to the stable `tid` of the suspended page it hosts.
 // tid survives browser restarts (it's in the URL) while tab ids do not, so
@@ -294,29 +317,24 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 async function suspendOtherTabs(activeId) {
   const tabs = await chrome.tabs.query({});
   const base = chrome.runtime.getURL('suspended.html');
-  const s = await chrome.storage.local.get(
+  const s    = await chrome.storage.sync.get(
     ['excludePinned', 'excludeAudible', 'excludedUrls', 'excludedDomains']);
-  const excludePinned   = s.excludePinned  !== false;
-  const excludeAudible  = s.excludeAudible !== false;
-  const excludedUrls    = s.excludedUrls    || [];
-  const excludedDomains = s.excludedDomains || [];
+  const settings = {
+    base,
+    excludePinned:   s.excludePinned  !== false,
+    excludeAudible:  s.excludeAudible !== false,
+    excludedUrls:    s.excludedUrls    || [],
+    excludedDomains: s.excludedDomains || [],
+  };
 
+  let count = 0;
   for (const t of tabs) {
-    if (t.id === activeId || !t.url) continue;
-    if (
-      t.url.startsWith(base) ||
-      t.url.startsWith('chrome://') ||
-      t.url.startsWith('chrome-extension://') ||
-      t.url.startsWith('about:')
-    ) continue;
-    if (excludePinned  && t.pinned)  continue;
-    if (excludeAudible && t.audible) continue;
-    if (excludedUrls.includes(t.url)) continue;
-    try {
-      if (excludedDomains.includes(new URL(t.url).hostname)) continue;
-    } catch {}
+    if (t.id === activeId) continue;
+    if (tabMatchesExclusions(t, settings)) continue;
     await suspendTab(t.id);
+    count++;
   }
+  return count;
 }
 
 async function addUrlException(url) {
@@ -479,40 +497,33 @@ chrome.alarms.onAlarm.addListener(alarm => {
 });
 
 async function autoSuspendCheck() {
-  const s = await chrome.storage.local.get([
+  const s = await chrome.storage.sync.get([
     'autoSuspendMinutes', 'excludePinned', 'excludeAudible',
     'excludeUnsavedForms', 'excludeActiveMedia', 'excludedUrls', 'excludedDomains',
   ]);
   const minutes             = s.autoSuspendMinutes ?? 20;
-  const excludePinned       = s.excludePinned       !== false;
-  const excludeAudible      = s.excludeAudible      !== false;
   const excludeUnsavedForms = !!s.excludeUnsavedForms;
   const excludeActiveMedia  = s.excludeActiveMedia  !== false;
-  const excludedUrls        = s.excludedUrls        || [];
-  const excludedDomains     = s.excludedDomains     || [];
 
   if (!minutes) return; // 0 = disabled
 
-  const threshold    = minutes * 60_000;
-  const now          = Date.now();
+  const threshold     = minutes * 60_000;
+  const now           = Date.now();
   const suspendedBase = chrome.runtime.getURL('suspended.html');
   const { lastActivity = {} } = await chrome.storage.session.get('lastActivity');
+
+  const settings = {
+    base:            suspendedBase,
+    excludePinned:   s.excludePinned  !== false,
+    excludeAudible:  s.excludeAudible !== false,
+    excludedUrls:    s.excludedUrls    || [],
+    excludedDomains: s.excludedDomains || [],
+  };
 
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
     if (tab.active) continue;
-    if (!tab.url || tab.url.startsWith(suspendedBase)) continue;
-    if (
-      tab.url.startsWith('chrome://') ||
-      tab.url.startsWith('chrome-extension://') ||
-      tab.url.startsWith('about:')
-    ) continue;
-    if (excludePinned  && tab.pinned)  continue;
-    if (excludeAudible && tab.audible) continue;
-    if (excludedUrls.includes(tab.url)) continue;
-    try {
-      if (excludedDomains.includes(new URL(tab.url).hostname)) continue;
-    } catch {}
+    if (tabMatchesExclusions(tab, settings)) continue;
 
     const last = lastActivity[tab.id] ?? tab.lastAccessed ?? now;
     if (now - last < threshold) continue;
