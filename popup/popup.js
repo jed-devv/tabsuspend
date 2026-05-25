@@ -22,8 +22,8 @@ function resizeCanvas() {
 resizeCanvas();
 
 const STARS = Array.from({ length: 55 }, () => ({
-  x:     Math.random() * 320,
-  y:     Math.random() * 500,
+  x:     Math.random() * canvas.width,
+  y:     Math.random() * canvas.height,
   r:     Math.random() * 1.1 + 0.25,
   speed: Math.random() * 0.006 + 0.002,
   phase: Math.random() * Math.PI * 2,
