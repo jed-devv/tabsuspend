@@ -464,7 +464,7 @@ document.getElementById('exc-remove-all').addEventListener('click', async () => 
   await chrome.storage.local.set({ excludedUrls: [], excludedDomains: [] });
   loadSettings();
   if (currentTab) refreshExclusionState(currentTab);
-  showToast('All exceptions removed');
+  showToast(t('toastAllExceptionsRemoved'));
 });
 
 document.getElementById('timer-grid').addEventListener('click', e => {

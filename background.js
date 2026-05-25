@@ -169,6 +169,14 @@ async function purgeStaleOrphans() {
 purgeStaleOrphans();
 
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
+  // Always purge the activity timestamp — it's set for every tab, not just
+  // suspended ones, so skipping this causes the map to grow indefinitely.
+  const { lastActivity = {} } = await chrome.storage.session.get('lastActivity');
+  if (tabId in lastActivity) {
+    delete lastActivity[tabId];
+    await chrome.storage.session.set({ lastActivity });
+  }
+
   const { tabTid = {} } = await chrome.storage.session.get('tabTid');
   const tid = tabTid[tabId];
   if (tid == null) return;
@@ -519,7 +527,9 @@ async function autoSuspendCheck() {
 function tabHasUnsavedInputs(tabId) {
   return new Promise(resolve => {
     chrome.tabs.sendMessage(tabId, { action: 'hasUnsavedInputs' }, response => {
-      resolve(chrome.runtime.lastError ? false : !!response);
+      // If the content script isn't injected (tab opened before install), err on
+      // the side of safety and treat the state as unknown → don't suspend.
+      resolve(chrome.runtime.lastError ? true : !!response);
     });
   });
 }
@@ -619,20 +629,30 @@ async function suspendTab(tabId) {
     if (excludedDomains.includes(new URL(tab.url).hostname)) return;
   } catch {}
 
-  // Capture video timestamp
+  // Capture video timestamp — only on hosts that honour the ?t= parameter,
+  // to avoid polluting analytics or breaking URLs on other sites.
+  const VIDEO_TIMESTAMP_HOSTS = new Set([
+    'www.youtube.com', 'youtube.com', 'youtu.be',
+    'www.twitch.tv', 'twitch.tv',
+    'vimeo.com', 'www.vimeo.com',
+    'www.dailymotion.com', 'dailymotion.com',
+  ]);
   let finalUrl = tab.url;
   try {
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => {
-        const video = document.querySelector('video');
-        return video && video.currentTime > 1 ? Math.floor(video.currentTime) : null;
-      },
-    });
-    if (result?.result) {
-      const url = new URL(finalUrl);
-      url.searchParams.set('t', result.result);
-      finalUrl = url.toString();
+    const tabHost = new URL(tab.url).hostname;
+    if (VIDEO_TIMESTAMP_HOSTS.has(tabHost)) {
+      const [result] = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const video = document.querySelector('video');
+          return video && video.currentTime > 1 ? Math.floor(video.currentTime) : null;
+        },
+      });
+      if (result?.result) {
+        const url = new URL(finalUrl);
+        url.searchParams.set('t', result.result);
+        finalUrl = url.toString();
+      }
     }
   } catch {}
 
