@@ -66,7 +66,8 @@ chrome.tabs.getCurrent(async tab => {
   const favicon     = data.favicon     || '';
   const grayFavicon = data.grayFavicon || '';
 
-  document.getElementById('page-title').textContent = title;
+  const truncated = title.length > 80 ? title.slice(0, 80) + '…' : title;
+  document.getElementById('page-title').textContent = truncated;
   document.title = title + msg('sleepingSuffix');
 
   const urlEl = document.getElementById('page-url');
